@@ -4,6 +4,7 @@ import { useApplications } from "@/context/ApplicationContext";
 
 export default function Dashboard() {
   const { applications, getApplicationStats, getUpcomingInterviews } = useApplications();
+  const { applications, getApplicationStats, getUpcomingInterviews, isHydrating } = useApplications();
   const stats = getApplicationStats();
   const upcoming = getUpcomingInterviews().slice(0, 3);
   const recent = [...applications]
@@ -22,6 +23,7 @@ export default function Dashboard() {
 
   return (
     <div className="page-container space-y-6">
+      {isHydrating && <div className="rounded-2xl bg-white/80 px-4 py-3 text-xs text-[#64748b]">Loading your tracker data...</div>}
       <header>
         <h1 className="page-title">Dashboard</h1>
         <p className="page-subtitle">Your job search at a glance, with focus on what is next.</p>
@@ -99,6 +101,9 @@ export default function Dashboard() {
         <h2 className="section-title">Recent activity</h2>
         <div className="surface-card p-2">
           {recent.map((app, idx) => (
+          {recent.length === 0 ? (
+            <div className="form-row text-sm text-[#64748b]">No activity yet. Add your first application to begin.</div>
+          ) : recent.map((app, idx) => (
             <Link
               key={app.id}
               to={`/applications/${app.id}`}

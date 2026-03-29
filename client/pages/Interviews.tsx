@@ -6,7 +6,7 @@ import { formatLocalYMD, parseLocalDate } from "@/lib/dates";
 
 export default function Interviews() {
   const location = useLocation();
-  const { getInterviewsByDate, applications } = useApplications();
+  const { getInterviewsByDate, applications, isHydrating } = useApplications();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
@@ -52,6 +52,7 @@ export default function Interviews() {
 
   return (
     <div className="page-container space-y-6">
+      {isHydrating && <div className="rounded-2xl bg-white/80 px-4 py-3 text-xs text-[#64748b]">Preparing your interview calendar...</div>}
       <header>
         <h1 className="page-title">Interviews</h1>
         <p className="page-subtitle">Calendar-first scheduling with timezone-safe interview dates.</p>

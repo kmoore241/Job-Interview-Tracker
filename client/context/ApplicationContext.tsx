@@ -1,20 +1,24 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { formatLocalYMD, parseLocalDate } from "../lib/dates";
+import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import { formatLocalYMD, parseLocalDate } from "../lib/dates";
+
+const STORAGE_KEY = "jit.applications.v1";
 
 export interface Application {
   id: string;
   company: string;
   role: string;
   status: "Applied" | "Interview" | "Rejected" | "Offer";
-  dateApplied: string; // ISO date string
-  interviewDate?: string; // YYYY-MM-DD format (local date, no timezone)
+  dateApplied: string;
+  interviewDate?: string;
   interviewTime?: string;
   location?: string;
   notes: string;
   initials: string;
   reminders?: {
     enabled: boolean;
-    times: ("24h" | "1h" | "10m")[]; // Which reminders to send
+    times: ("24h" | "1h" | "10m")[];
   };
   preparation?: {
     interviewerName?: string;
@@ -34,16 +38,19 @@ export interface Interview {
   role: string;
   time: string;
   location: string;
-  date: string; // ISO date string
+  date: string;
   applicationId: string;
 }
 
 interface ApplicationContextType {
   applications: Application[];
   interviews: Interview[];
+  isHydrating: boolean;
+  persistenceError: string | null;
   addApplication: (app: Omit<Application, "id">) => void;
   updateApplication: (id: string, app: Partial<Application>) => void;
   deleteApplication: (id: string) => void;
+  clearAllApplications: () => void;
   getApplicationById: (id: string) => Application | undefined;
   getInterviewsByDate: (date: Date) => Interview[];
   getApplicationStats: () => {
@@ -64,11 +71,8 @@ interface ApplicationContextType {
   }>;
 }
 
-const ApplicationContext = createContext<ApplicationContextType | undefined>(
-  undefined
-);
+const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined);
 
-// Helper to create mock data with proper date strings
 function createMockApplications(): Application[] {
   const today = new Date();
   const in3Days = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
@@ -118,107 +122,75 @@ function createMockApplications(): Application[] {
       notes: "Pending decision, $120k offer",
       initials: "FS",
     },
-    {
-      id: "5",
-      company: "CloudBase Systems",
-      role: "DevOps Engineer",
-      status: "Interview",
-      dateApplied: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-      interviewDate: formatLocalYMD(in7Days),
-      interviewTime: "11:30 AM",
-      location: "New York, NY",
-      notes: "Cloud infrastructure focus",
-      initials: "CB",
-    },
-    {
-      id: "6",
-      company: "AI Innovations",
-      role: "ML Engineer",
-      status: "Applied",
-      dateApplied: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      notes: "Looking for ML engineers",
-      initials: "AI",
-    },
-    {
-      id: "7",
-      company: "WebFlow Agency",
-      role: "Frontend Developer",
-      status: "Applied",
-      dateApplied: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      notes: "Remote-friendly, no meetings culture",
-      initials: "WA",
-    },
-    {
-      id: "8",
-      company: "DataStream Corp",
-      role: "Backend Engineer",
-      status: "Applied",
-      dateApplied: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      notes: "Interesting tech stack",
-      initials: "DC",
-    },
   ];
 }
 
-// Mock data with realistic ISO dates
-const mockApplicationsData = createMockApplications();
-
-const mockInterviewsData: Interview[] = [
-  {
-    id: "int-1",
-    company: "Acme Corp",
-    role: "Senior Product Manager",
-    time: "10:00 AM",
-    location: "San Francisco, CA",
-    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000).toISOString(),
-    applicationId: "1",
-  },
-  {
-    id: "int-2",
-    company: "Tech Startup Inc",
-    role: "Full Stack Engineer",
-    time: "2:00 PM",
-    location: "Zoom",
-    date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    applicationId: "2",
-  },
-  {
-    id: "int-3",
-    company: "CloudBase Systems",
-    role: "DevOps Engineer",
-    time: "11:30 AM",
-    location: "New York, NY",
-    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    applicationId: "5",
-  },
-];
-
 export function ApplicationProvider({ children }: { children: ReactNode }) {
-  const [applications, setApplications] = useState<Application[]>(mockApplicationsData);
-  const [interviews, setInterviews] = useState<Interview[]>(mockInterviewsData);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { applications: Application[] };
+        setApplications(parsed.applications ?? []);
+      } else {
+        setApplications(createMockApplications());
+      }
+    } catch {
+      setApplications(createMockApplications());
+      setPersistenceError("Could not read local data. Using safe defaults.");
+    } finally {
+      setIsHydrating(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isHydrating) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ applications }));
+      setPersistenceError(null);
+    } catch {
+      setPersistenceError("Could not save your latest changes locally.");
+    }
+  }, [applications, isHydrating]);
+
+  useEffect(() => {
+    const mapped = applications
+      .filter((app) => app.interviewDate)
+      .map((app) => ({
+        id: app.id,
+        company: app.company,
+        role: app.role,
+        time: app.interviewTime ?? "TBD",
+        location: app.location ?? "TBD",
+        date: app.interviewDate ?? "",
+        applicationId: app.id,
+      }));
+
+    setInterviews(mapped);
+  }, [applications]);
 
   const addApplication = (app: Omit<Application, "id">) => {
-    const newApp: Application = {
-      ...app,
-      id: Date.now().toString(),
-    };
-    setApplications([...applications, newApp]);
+    setApplications((prev) => [...prev, { ...app, id: Date.now().toString() }]);
   };
 
   const updateApplication = (id: string, app: Partial<Application>) => {
-    setApplications(
-      applications.map((a) => (a.id === id ? { ...a, ...app } : a))
-    );
+    setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, ...app } : a)));
   };
 
   const deleteApplication = (id: string) => {
-    setApplications(applications.filter((a) => a.id !== id));
-    setInterviews(interviews.filter((i) => i.applicationId !== id));
+    setApplications((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const getApplicationById = (id: string) => {
-    return applications.find((a) => a.id === id);
+  const clearAllApplications = () => {
+    setApplications([]);
   };
+
+  const getApplicationById = (id: string) => applications.find((a) => a.id === id);
 
   const getInterviewsByDate = (date: Date) => {
     const key = formatLocalYMD(date);
@@ -236,14 +208,12 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
       }));
   };
 
-  const getApplicationStats = () => {
-    return {
-      applied: applications.filter((a) => a.status === "Applied").length,
-      interviewing: applications.filter((a) => a.status === "Interview").length,
-      rejected: applications.filter((a) => a.status === "Rejected").length,
-      offers: applications.filter((a) => a.status === "Offer").length,
-    };
-  };
+  const getApplicationStats = () => ({
+    applied: applications.filter((a) => a.status === "Applied").length,
+    interviewing: applications.filter((a) => a.status === "Interview").length,
+    rejected: applications.filter((a) => a.status === "Rejected").length,
+    offers: applications.filter((a) => a.status === "Offer").length,
+  });
 
   const getNextInterview = () => {
     const upcoming = applications
@@ -252,6 +222,7 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
         ...a,
         interviewDateObj: parseLocalDate(a.interviewDate!),
       }))
+      .map((a) => ({ ...a, interviewDateObj: parseLocalDate(a.interviewDate!) }))
       .filter((a) => a.interviewDateObj >= parseLocalDate(formatLocalYMD(new Date())))
       .sort((a, b) => a.interviewDateObj.getTime() - b.interviewDateObj.getTime());
 
@@ -290,29 +261,27 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => a.date - b.date);
   };
 
-  const getAllInterviews = () => {
-    return interviews;
-  };
-
-  return (
-    <ApplicationContext.Provider
-      value={{
-        applications,
-        interviews,
-        addApplication,
-        updateApplication,
-        deleteApplication,
-        getApplicationById,
-        getInterviewsByDate,
-        getApplicationStats,
-        getNextInterview,
-        getAllInterviews,
-        getUpcomingInterviews,
-      }}
-    >
-      {children}
-    </ApplicationContext.Provider>
+  const value = useMemo(
+    () => ({
+      applications,
+      interviews,
+      isHydrating,
+      persistenceError,
+      addApplication,
+      updateApplication,
+      deleteApplication,
+      clearAllApplications,
+      getApplicationById,
+      getInterviewsByDate,
+      getApplicationStats,
+      getNextInterview,
+      getAllInterviews: () => interviews,
+      getUpcomingInterviews,
+    }),
+    [applications, interviews, isHydrating, persistenceError]
   );
+
+  return <ApplicationContext.Provider value={value}>{children}</ApplicationContext.Provider>;
 }
 
 export function useApplications() {

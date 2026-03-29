@@ -14,6 +14,7 @@ export default function ApplicationEditForm({ application, onSave, onCancel }: A
   const { updateApplication } = useApplications();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [submitMessage, setSubmitMessage] = useState<string>("");
   const [formData, setFormData] = useState({
     company: application.company,
     role: application.role,
@@ -56,6 +57,7 @@ export default function ApplicationEditForm({ application, onSave, onCancel }: A
     }
 
     setErrors({});
+    setSubmitMessage("");
     setIsLoading(true);
 
     try {
@@ -84,6 +86,11 @@ export default function ApplicationEditForm({ application, onSave, onCancel }: A
       onSave?.();
     } catch (error) {
       console.error("Error updating application:", error);
+      setSubmitMessage("Changes saved.");
+      onSave?.();
+    } catch (error) {
+      console.error("Error updating application:", error);
+      setSubmitMessage("Could not save changes. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -91,6 +98,7 @@ export default function ApplicationEditForm({ application, onSave, onCancel }: A
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {submitMessage && <div className="rounded-2xl bg-blue-50 px-4 py-3 text-xs text-blue-700" role="status" aria-live="polite">{submitMessage}</div>}
       <section>
         <p className="group-label">Role details</p>
         <div className="form-group">

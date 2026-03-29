@@ -37,6 +37,12 @@ export default function Insights() {
         <p className="page-subtitle">Performance metrics and trends across your application pipeline.</p>
       </header>
 
+      {total === 0 && (
+        <div className="surface-card p-5 text-sm text-[#64748b]">
+          Insights will appear after you add a few applications.
+        </div>
+      )}
+
       <section className="grid grid-cols-2 gap-3">
         <div className="surface-card p-4">
           <p className="group-label">Total applications</p>

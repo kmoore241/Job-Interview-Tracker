@@ -5,6 +5,7 @@ import { useState } from "react";
 import ApplicationEditForm from "@/components/ApplicationEditForm";
 import { useBackspacePrevention } from "@/hooks/useBackspacePrevention";
 import { STATUS_STYLES } from "@/lib/status";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { parseLocalDate } from "@/lib/dates";
 
 export default function ApplicationDetail() {
@@ -12,6 +13,7 @@ export default function ApplicationDetail() {
   const navigate = useNavigate();
   const { getApplicationById, deleteApplication } = useApplications();
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   useBackspacePrevention();
 
   const application = id ? getApplicationById(id) : null;
@@ -98,7 +100,21 @@ export default function ApplicationDetail() {
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => setIsEditing(true)} className="rounded-2xl bg-primary text-white py-3 font-semibold inline-flex items-center justify-center gap-2"><Edit2 size={16} />Edit</button>
         <button onClick={handleDelete} className="rounded-2xl bg-rose-600 text-white py-3 font-semibold inline-flex items-center justify-center gap-2"><Trash2 size={16} />Delete</button>
+        <button onClick={() => setShowDeleteConfirm(true)} className="rounded-2xl bg-rose-600 text-white py-3 font-semibold inline-flex items-center justify-center gap-2"><Trash2 size={16} />Delete</button>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete application?"
+        description={`This will permanently remove ${application.company} from your tracker.`}
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          deleteApplication(application.id);
+          navigate("/applications");
+        }}
+      />
     </div>
   );
 }

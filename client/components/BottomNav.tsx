@@ -16,12 +16,15 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-[#e8ecf2] bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex h-[84px] w-full max-w-[520px] items-center justify-around px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-[#e8ecf2] bg-white/95 backdrop-blur-md" aria-label="Primary">
+      <div className="mx-auto flex h-[calc(84px+env(safe-area-inset-bottom))] w-full max-w-[520px] items-start justify-around px-2 pt-2">
         {navItems.map(({ path, label, icon: Icon }) => {
           const isActive = location.pathname === path;
           return (
             <Link
               key={path}
               to={path}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex w-[72px] flex-col items-center gap-1 rounded-2xl py-2 transition",
                 isActive ? "text-primary" : "text-[#8c97a8]"

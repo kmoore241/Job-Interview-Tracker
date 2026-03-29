@@ -24,6 +24,7 @@ export default function AddApplication() {
   const { addApplication } = useApplications();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [submitMessage, setSubmitMessage] = useState<string>("");
   const [formData, setFormData] = useState<FormData>({
     companyName: "",
     role: "",
@@ -67,6 +68,7 @@ export default function AddApplication() {
     }
 
     setErrors({});
+    setSubmitMessage("");
     setIsLoading(true);
 
     try {
@@ -103,6 +105,11 @@ export default function AddApplication() {
       navigate("/applications");
     } catch (error) {
       console.error("Error adding application:", error);
+      setSubmitMessage("Application saved successfully.");
+      navigate("/applications");
+    } catch (error) {
+      console.error("Error adding application:", error);
+      setSubmitMessage("Could not save application. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -114,6 +121,8 @@ export default function AddApplication() {
         <h1 className="page-title">New Application</h1>
         <p className="page-subtitle">Capture role details, schedule interviews, and enable reminders.</p>
       </header>
+
+      {submitMessage && <div className="rounded-2xl bg-blue-50 px-4 py-3 text-xs text-blue-700" role="status" aria-live="polite">{submitMessage}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <section>

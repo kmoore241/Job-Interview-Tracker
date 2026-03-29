@@ -7,6 +7,8 @@ A polished, mobile-first job search companion for tracking applications, intervi
 Job Interview Tracker helps you manage the full interview pipeline in one place. You can add and edit applications, schedule interviews, review upcoming events in a calendar view, and monitor conversion rates through lightweight insights.
 
 The interface is redesigned with an Apple-inspired visual language focused on clarity, hierarchy, and calm spacing for day-to-day use.
+The interface uses an Apple-inspired visual language focused on clarity, hierarchy, and calm spacing, now hardened with onboarding, empty states, confirmation dialogs, and resilient local persistence.
+main
 
 ## Key Features
 
@@ -19,6 +21,9 @@ The interface is redesigned with an Apple-inspired visual language focused on cl
 - Insights screen with rates and trend summaries
 - Grouped, native-feeling forms and settings layout
 - Mobile tab navigation with floating add action
+- First-run onboarding modal
+- Loading, empty, success/error, and confirmation states across key flows
+- Local-first persistence with future-ready sync adapter hooks
 
 ## Screens / Sections
 
@@ -28,6 +33,7 @@ High-level overview of your pipeline:
 - Pipeline health and interview rate
 - Upcoming interviews
 - Recent application activity
+- loading and empty-state feedback
 
 ### 2) Applications
 Main list management screen:
@@ -35,6 +41,7 @@ Main list management screen:
 - Status filtering
 - Sort options (Newest / Company)
 - Cleaner detail rows and quick delete affordance
+- confirmation dialog for delete
 
 ### 3) Interviews
 Calendar and agenda workflow:
@@ -57,6 +64,9 @@ Grouped app preferences and metadata:
 - Export data action (placeholder)
 - Delete-all action (placeholder)
 - App info and architecture notes
+- Sync action via local-first adapter (cloud-ready)
+- Delete-all confirmation flow
+- App info + platform mode info
 
 ## Tech Stack
 
@@ -102,6 +112,11 @@ client/
   hooks/             # UI and reminder hooks
   lib/               # Date helpers, validation, utilities
   pages/             # App screens (Dashboard, Applications, etc.)
+  context/           # Application state + local persistence
+  hooks/             # UI and reminder hooks
+  lib/               # Date helpers, validation, utilities, platform helpers
+  pages/             # App screens (Dashboard, Applications, etc.)
+  services/          # Sync/auth-ready service adapters
   global.css         # Tokens + reusable style primitives
 
 server/
@@ -110,6 +125,8 @@ server/
 
 shared/
   api.ts             # Shared types for client/server
+
+capacitor.config.ts  # Starter config for native shell packaging
 ```
 
 ## Future Improvements / Roadmap
@@ -120,6 +137,13 @@ shared/
 - Add notification delivery integrations (email/push)
 - Improve export with full CSV schema and filters
 - Prepare native wrappers for iOS/Android deployment workflows
+- Add real authentication provider (Supabase/Firebase/Auth0)
+- Replace local sync adapter with authenticated cloud sync
+- Add conflict resolution + offline queue strategy
+- Introduce richer chart visualizations for insights
+- Implement production CSV export and import
+- Add push notifications for interview reminders
+- Expand Capacitor setup with iOS/Android build scripts and CI
 
 ## Timezone-Safe Date Handling Notes
 
@@ -130,6 +154,13 @@ Core helpers:
 - `formatLocalYMD()` in `client/lib/dates.ts`
 
 These helpers are used in scheduling flows and calendar matching to keep date behavior consistent.
+
+## App Store / Capacitor Readiness Notes
+
+- `capacitor.config.ts` is included as a baseline native packaging config.
+- UI includes safe-area-aware nav/FAB spacing for mobile devices.
+- Platform detection helper (`client/lib/platform.ts`) is in place for native/web branching.
+- Sync service abstraction (`client/services/sync.ts`) is ready to swap to real cloud backends.
 
 ## Author
 
