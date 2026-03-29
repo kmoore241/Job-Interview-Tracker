@@ -9,6 +9,7 @@ export default function Applications() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | (typeof STATUS_ORDER)[number]>("All");
   const [sortOrder, setSortOrder] = useState<"Newest" | "Company">("Newest");
+  const { applications, deleteApplication } = useApplications();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const { applications, deleteApplication, isHydrating, persistenceError } = useApplications();
 
@@ -59,6 +60,11 @@ export default function Applications() {
 
         <div className="grid grid-cols-2 gap-2">
           <label className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="input-native appearance-none pr-8"
+            >
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="input-native appearance-none pr-8" aria-label="Filter by status">
               <option value="All">All statuses</option>
               {STATUS_ORDER.map((status) => (
@@ -69,6 +75,11 @@ export default function Applications() {
           </label>
 
           <label className="relative">
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+              className="input-native appearance-none pr-8"
+            >
             <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)} className="input-native appearance-none pr-8" aria-label="Sort applications">
               <option value="Newest">Newest</option>
               <option value="Company">Company A-Z</option>
@@ -78,6 +89,8 @@ export default function Applications() {
         </div>
       </div>
 
+      <div className="space-y-3">
+        {filteredApplications.length > 0 ? (
       <div className="space-y-3" aria-busy={isHydrating}>
         {isHydrating ? (
           Array.from({ length: 3 }).map((_, idx) => (
@@ -96,6 +109,7 @@ export default function Applications() {
             />
           ))
         ) : (
+          <div className="surface-card p-8 text-center text-sm text-[#6b7280]">No applications found.</div>
           <div className="surface-card p-8 text-center text-sm text-[#6b7280]">
             No applications found. Tap the floating + button to add your first role.
           </div>

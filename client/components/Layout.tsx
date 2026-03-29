@@ -28,6 +28,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="app-shell">
       <div className="mx-auto w-full max-w-[520px] min-h-screen bg-transparent relative">
+        <main className="pb-[96px]">{children}</main>
         <main className="pb-[calc(96px+env(safe-area-inset-bottom))]" role="main">
           {children}
         </main>
@@ -36,6 +37,7 @@ export default function Layout({ children }: LayoutProps) {
           <Link
             to="/add"
             aria-label="Add application"
+            className="fixed bottom-[104px] right-6 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-white shadow-[0_14px_30px_rgba(59,130,246,0.35)] transition hover:scale-[1.03]"
             className="fixed bottom-[calc(104px+env(safe-area-inset-bottom))] right-6 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-white shadow-[0_14px_30px_rgba(59,130,246,0.35)] transition hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
           >
             <Plus size={24} />

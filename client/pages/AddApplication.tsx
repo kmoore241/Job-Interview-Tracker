@@ -102,6 +102,9 @@ export default function AddApplication() {
           : undefined,
       });
 
+      navigate("/applications");
+    } catch (error) {
+      console.error("Error adding application:", error);
       setSubmitMessage("Application saved successfully.");
       navigate("/applications");
     } catch (error) {

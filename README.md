@@ -6,7 +6,9 @@ A polished, mobile-first job search companion for tracking applications, intervi
 
 Job Interview Tracker helps you manage the full interview pipeline in one place. You can add and edit applications, schedule interviews, review upcoming events in a calendar view, and monitor conversion rates through lightweight insights.
 
+The interface is redesigned with an Apple-inspired visual language focused on clarity, hierarchy, and calm spacing for day-to-day use.
 The interface uses an Apple-inspired visual language focused on clarity, hierarchy, and calm spacing, now hardened with onboarding, empty states, confirmation dialogs, and resilient local persistence.
+main
 
 ## Key Features
 
@@ -60,6 +62,8 @@ Performance-focused analytics:
 Grouped app preferences and metadata:
 - Notification toggle
 - Export data action (placeholder)
+- Delete-all action (placeholder)
+- App info and architecture notes
 - Sync action via local-first adapter (cloud-ready)
 - Delete-all confirmation flow
 - App info + platform mode info
@@ -104,6 +108,10 @@ pnpm start
 ```text
 client/
   components/        # Reusable UI and feature components
+  context/           # Application state (applications/interviews)
+  hooks/             # UI and reminder hooks
+  lib/               # Date helpers, validation, utilities
+  pages/             # App screens (Dashboard, Applications, etc.)
   context/           # Application state + local persistence
   hooks/             # UI and reminder hooks
   lib/               # Date helpers, validation, utilities, platform helpers
@@ -123,6 +131,12 @@ capacitor.config.ts  # Starter config for native shell packaging
 
 ## Future Improvements / Roadmap
 
+- Persist data to local storage or database
+- Add authentication and multi-device sync
+- Introduce richer chart visualizations for insights
+- Add notification delivery integrations (email/push)
+- Improve export with full CSV schema and filters
+- Prepare native wrappers for iOS/Android deployment workflows
 - Add real authentication provider (Supabase/Firebase/Auth0)
 - Replace local sync adapter with authenticated cloud sync
 - Add conflict resolution + offline queue strategy
