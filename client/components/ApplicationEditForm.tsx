@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useApplications } from "@/context/ApplicationContext";
 import { Application } from "@/context/ApplicationContext";
-import { formatLocalYMD } from "@/lib/dates";
+import { parseLocalDate } from "@/lib/dates";
 import { validateApplicationForm, ValidationErrors, hasErrors } from "@/lib/validation";
 
 interface ApplicationEditFormProps {
@@ -10,11 +10,7 @@ interface ApplicationEditFormProps {
   onCancel?: () => void;
 }
 
-export default function ApplicationEditForm({
-  application,
-  onSave,
-  onCancel,
-}: ApplicationEditFormProps) {
+export default function ApplicationEditForm({ application, onSave, onCancel }: ApplicationEditFormProps) {
   const { updateApplication } = useApplications();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -34,26 +30,17 @@ export default function ApplicationEditForm({
   });
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const target = e.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
     const { name } = target;
-    const value = target instanceof HTMLInputElement && target.type === "checkbox"
-      ? (target as HTMLInputElement).checked
-      : target.value;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    const value = target instanceof HTMLInputElement && target.type === "checkbox" ? target.checked : target.value;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form data
     const validationErrors = validateApplicationForm({
       company: formData.company,
       role: formData.role,
@@ -68,12 +55,10 @@ export default function ApplicationEditForm({
       return;
     }
 
-    // Clear errors if validation passes
     setErrors({});
     setIsLoading(true);
 
     try {
-      // Build reminders configuration
       const reminderTimes: ("24h" | "1h" | "10m")[] = [];
       if (formData.reminder24h) reminderTimes.push("24h");
       if (formData.reminder1h) reminderTimes.push("1h");
@@ -82,8 +67,8 @@ export default function ApplicationEditForm({
       updateApplication(application.id, {
         company: formData.company,
         role: formData.role,
-        status: formData.status as any,
-        dateApplied: new Date(formData.dateApplied).toISOString(),
+        status: formData.status as Application["status"],
+        dateApplied: parseLocalDate(formData.dateApplied).toISOString(),
         interviewDate: formData.interviewDate || undefined,
         interviewTime: formData.interviewTime || undefined,
         location: formData.location || undefined,
@@ -96,236 +81,95 @@ export default function ApplicationEditForm({
           : undefined,
       });
 
-      setIsLoading(false);
       onSave?.();
     } catch (error) {
       console.error("Error updating application:", error);
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Company Name */}
-      <div>
-        <label className="block text-sm font-medium text-primary-text mb-2">
-          Company Name
-        </label>
-        <input
-          type="text"
-          name="company"
-          value={formData.company}
-          onChange={handleChange}
-          className={`w-full px-4 py-3 rounded-[12px] border focus:outline-none focus:ring-2 text-primary-text ${
-            errors.company
-              ? "border-error focus:ring-error"
-              : "border-[#E5E7EB] focus:ring-primary"
-          }`}
-          required
-        />
-        {errors.company && (
-          <p className="text-error text-sm mt-1">{errors.company}</p>
-        )}
-      </div>
-
-      {/* Role */}
-      <div>
-        <label className="block text-sm font-medium text-primary-text mb-2">
-          Role
-        </label>
-        <input
-          type="text"
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-          className={`w-full px-4 py-3 rounded-[12px] border focus:outline-none focus:ring-2 text-primary-text ${
-            errors.role
-              ? "border-error focus:ring-error"
-              : "border-[#E5E7EB] focus:ring-primary"
-          }`}
-          required
-        />
-        {errors.role && (
-          <p className="text-error text-sm mt-1">{errors.role}</p>
-        )}
-      </div>
-
-      {/* Status */}
-      <div>
-        <label className="block text-sm font-medium text-primary-text mb-2">
-          Status
-        </label>
-        <select
-          name="status"
-          value={formData.status}
-          onChange={handleChange}
-          className="w-full px-4 py-3 rounded-[12px] border border-[#E5E7EB] focus:outline-none focus:ring-2 focus:ring-primary text-primary-text"
-        >
-          <option value="Applied">Applied</option>
-          <option value="Interview">Interview</option>
-          <option value="Rejected">Rejected</option>
-          <option value="Offer">Offer</option>
-        </select>
-      </div>
-
-      {/* Date Applied */}
-      <div>
-        <label className="block text-sm font-medium text-primary-text mb-2">
-          Date Applied
-        </label>
-        <input
-          type="date"
-          name="dateApplied"
-          value={formData.dateApplied}
-          onChange={handleChange}
-          className="w-full px-4 py-3 rounded-[12px] border border-[#E5E7EB] focus:outline-none focus:ring-2 focus:ring-primary text-primary-text"
-          required
-        />
-      </div>
-
-      {/* Interview Date */}
-      <div>
-        <label className="block text-sm font-medium text-primary-text mb-2">
-          Interview Date (Optional)
-        </label>
-        <input
-          type="date"
-          name="interviewDate"
-          value={formData.interviewDate}
-          onChange={handleChange}
-          className={`w-full px-4 py-3 rounded-[12px] border focus:outline-none focus:ring-2 text-primary-text ${
-            errors.interviewDate
-              ? "border-error focus:ring-error"
-              : "border-[#E5E7EB] focus:ring-primary"
-          }`}
-        />
-        {errors.interviewDate && (
-          <p className="text-error text-sm mt-1">{errors.interviewDate}</p>
-        )}
-      </div>
-
-      {/* Interview Time */}
-      <div>
-        <label className="block text-sm font-medium text-primary-text mb-2">
-          Interview Time (Optional)
-        </label>
-        <input
-          type="time"
-          name="interviewTime"
-          value={formData.interviewTime}
-          onChange={handleChange}
-          className={`w-full px-4 py-3 rounded-[12px] border focus:outline-none focus:ring-2 text-primary-text ${
-            errors.interviewTime
-              ? "border-error focus:ring-error"
-              : "border-[#E5E7EB] focus:ring-primary"
-          }`}
-        />
-        {errors.interviewTime && (
-          <p className="text-error text-sm mt-1">{errors.interviewTime}</p>
-        )}
-      </div>
-
-      {/* Location */}
-      <div>
-        <label className="block text-sm font-medium text-primary-text mb-2">
-          Interview Location (Optional)
-        </label>
-        <input
-          type="text"
-          name="location"
-          value={formData.location}
-          onChange={handleChange}
-          placeholder="e.g., San Francisco, CA or Zoom"
-          className="w-full px-4 py-3 rounded-[12px] border border-[#E5E7EB] focus:outline-none focus:ring-2 focus:ring-primary text-primary-text placeholder-secondary-text"
-        />
-      </div>
-
-      {/* Notes */}
-      <div>
-        <label className="block text-sm font-medium text-primary-text mb-2">
-          Notes
-        </label>
-        <textarea
-          name="notes"
-          value={formData.notes}
-          onChange={handleChange}
-          placeholder="Add any notes about this application..."
-          rows={4}
-          className="w-full px-4 py-3 rounded-[12px] border border-[#E5E7EB] focus:outline-none focus:ring-2 focus:ring-primary text-primary-text placeholder-secondary-text resize-none"
-        />
-      </div>
-
-      {/* Interview Reminders */}
-      {formData.interviewDate && formData.interviewTime && (
-        <div className="bg-[#F0F9FF] border border-[#E0F2FE] rounded-[12px] p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <input
-              type="checkbox"
-              id="remindersEnabled"
-              name="remindersEnabled"
-              checked={formData.remindersEnabled}
-              onChange={handleChange}
-              className="w-4 h-4 rounded cursor-pointer"
-            />
-            <label
-              htmlFor="remindersEnabled"
-              className="text-sm font-medium text-primary-text cursor-pointer"
-            >
-              Enable interview reminders
-            </label>
+      <section>
+        <p className="group-label">Role details</p>
+        <div className="form-group">
+          <div className="form-row">
+            <label className="text-sm font-medium text-[#0f172a]">Company Name</label>
+            <input type="text" name="company" value={formData.company} onChange={handleChange} className="input-native" required />
+            {errors.company && <p className="text-xs text-red-600">{errors.company}</p>}
           </div>
-
-          {formData.remindersEnabled && (
-            <div className="space-y-2 ml-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="reminder24h"
-                  checked={formData.reminder24h}
-                  onChange={handleChange}
-                  className="w-4 h-4 rounded"
-                />
-                <span className="text-sm text-primary-text">24 hours before</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="reminder1h"
-                  checked={formData.reminder1h}
-                  onChange={handleChange}
-                  className="w-4 h-4 rounded"
-                />
-                <span className="text-sm text-primary-text">1 hour before</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="reminder10m"
-                  checked={formData.reminder10m}
-                  onChange={handleChange}
-                  className="w-4 h-4 rounded"
-                />
-                <span className="text-sm text-primary-text">10 minutes before</span>
-              </label>
-            </div>
-          )}
+          <div className="form-row form-row-divider">
+            <label className="text-sm font-medium text-[#0f172a]">Role</label>
+            <input type="text" name="role" value={formData.role} onChange={handleChange} className="input-native" required />
+            {errors.role && <p className="text-xs text-red-600">{errors.role}</p>}
+          </div>
+          <div className="form-row form-row-divider">
+            <label className="text-sm font-medium text-[#0f172a]">Status</label>
+            <select name="status" value={formData.status} onChange={handleChange} className="input-native">
+              <option value="Applied">Applied</option>
+              <option value="Interview">Interview</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Offer">Offer</option>
+            </select>
+          </div>
+          <div className="form-row form-row-divider">
+            <label className="text-sm font-medium text-[#0f172a]">Date Applied</label>
+            <input type="date" name="dateApplied" value={formData.dateApplied} onChange={handleChange} className="input-native" required />
+          </div>
         </div>
+      </section>
+
+      <section>
+        <p className="group-label">Interview details</p>
+        <div className="form-group">
+          <div className="form-row">
+            <label className="text-sm font-medium text-[#0f172a]">Interview Date</label>
+            <input type="date" name="interviewDate" value={formData.interviewDate} onChange={handleChange} className="input-native" />
+            {errors.interviewDate && <p className="text-xs text-red-600">{errors.interviewDate}</p>}
+          </div>
+          <div className="form-row form-row-divider">
+            <label className="text-sm font-medium text-[#0f172a]">Interview Time</label>
+            <input type="time" name="interviewTime" value={formData.interviewTime} onChange={handleChange} className="input-native" />
+            {errors.interviewTime && <p className="text-xs text-red-600">{errors.interviewTime}</p>}
+          </div>
+          <div className="form-row form-row-divider">
+            <label className="text-sm font-medium text-[#0f172a]">Location</label>
+            <input type="text" name="location" value={formData.location} onChange={handleChange} className="input-native" />
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <p className="group-label">Notes</p>
+        <div className="form-group">
+          <div className="form-row">
+            <textarea name="notes" value={formData.notes} onChange={handleChange} rows={4} className="input-native resize-none" />
+          </div>
+        </div>
+      </section>
+
+      {formData.interviewDate && formData.interviewTime && (
+        <section>
+          <p className="group-label">Reminder settings</p>
+          <div className="surface-card p-4 space-y-3">
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="remindersEnabled" checked={formData.remindersEnabled} onChange={handleChange} className="h-4 w-4" />Enable reminders</label>
+            {formData.remindersEnabled && (
+              <div className="grid gap-2 pl-6 text-sm text-[#475569]">
+                <label className="flex items-center gap-2"><input type="checkbox" name="reminder24h" checked={formData.reminder24h} onChange={handleChange} className="h-4 w-4" />24 hours before</label>
+                <label className="flex items-center gap-2"><input type="checkbox" name="reminder1h" checked={formData.reminder1h} onChange={handleChange} className="h-4 w-4" />1 hour before</label>
+                <label className="flex items-center gap-2"><input type="checkbox" name="reminder10m" checked={formData.reminder10m} onChange={handleChange} className="h-4 w-4" />10 minutes before</label>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
-      {/* Submit Buttons */}
-      <div className="flex gap-3 pt-4">
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="flex-1 bg-primary text-white font-medium rounded-[12px] py-3 hover:bg-blue-600 transition disabled:opacity-50"
-        >
-          {isLoading ? "Saving..." : "Save Changes"}
+      <div className="grid grid-cols-2 gap-3 pt-1">
+        <button type="submit" disabled={isLoading} className="rounded-2xl bg-primary py-3 text-sm font-semibold text-white disabled:opacity-60">
+          {isLoading ? "Saving..." : "Save"}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 bg-[#E5E7EB] text-primary-text font-medium rounded-[12px] py-3 hover:bg-[#D1D5DB] transition"
-        >
+        <button type="button" onClick={onCancel} className="rounded-2xl bg-white py-3 text-sm font-semibold text-[#0f172a] shadow-sm">
           Cancel
         </button>
       </div>

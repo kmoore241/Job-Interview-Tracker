@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Download, Trash2, ChevronRight } from "lucide-react";
+import { Bell, ChevronRight, Download, Info, Shield, Trash2 } from "lucide-react";
 
 export default function Settings() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -9,93 +9,93 @@ export default function Settings() {
   };
 
   const handleDeleteAll = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete all applications? This cannot be undone."
-      )
-    ) {
+    if (window.confirm("Are you sure you want to delete all applications? This cannot be undone.")) {
       alert("All applications deleted");
     }
   };
 
   return (
-    <div className="px-4 pt-6 pb-4">
-      <h1 className="text-2xl font-semibold text-primary-text mb-6">Settings</h1>
+    <div className="page-container space-y-6">
+      <header>
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">Manage reminders, data, and app preferences.</p>
+      </header>
 
-      <div className="space-y-2">
-        {/* Notifications */}
-        <div className="bg-white rounded-[12px] p-4 flex items-center justify-between mb-3 border border-[#F0F0F0]">
-          <div className="flex items-center gap-3">
-            <Bell size={20} className="text-primary" />
-            <div>
-              <div className="font-medium text-primary-text">Notifications</div>
-              <div className="text-xs text-secondary-text mt-1">
-                Interview reminders and updates
+      <section>
+        <p className="group-label">Preferences</p>
+        <div className="surface-card p-2">
+          <div className="form-row">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-primary"><Bell size={16} /></div>
+                <div>
+                  <p className="text-sm font-semibold text-[#0f172a]">Notifications</p>
+                  <p className="text-xs text-[#6b7280]">Interview reminders and updates</p>
+                </div>
               </div>
-            </div>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={notificationsEnabled}
-              onChange={(e) => setNotificationsEnabled(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-[#E5E7EB] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-          </label>
-        </div>
-
-        {/* Export Data */}
-        <button
-          onClick={handleExportData}
-          className="w-full bg-white rounded-[12px] p-4 flex items-center justify-between border border-[#F0F0F0] hover:bg-[#F9FAFB] transition mb-3"
-        >
-          <div className="flex items-center gap-3">
-            <Download size={20} className="text-primary" />
-            <div className="text-left">
-              <div className="font-medium text-primary-text">Export Data</div>
-              <div className="text-xs text-secondary-text mt-1">
-                Download your applications as CSV
-              </div>
-            </div>
-          </div>
-          <ChevronRight size={20} className="text-secondary-text" />
-        </button>
-
-        {/* Delete All Applications */}
-        <button
-          onClick={handleDeleteAll}
-          className="w-full bg-white rounded-[12px] p-4 flex items-center justify-between border border-[#F0F0F0] hover:bg-[#FEE2E2] transition mb-3"
-        >
-          <div className="flex items-center gap-3">
-            <Trash2 size={20} className="text-error" />
-            <div className="text-left">
-              <div className="font-medium text-error">Delete All Applications</div>
-              <div className="text-xs text-secondary-text mt-1">
-                Permanently remove all data
-              </div>
-            </div>
-          </div>
-          <ChevronRight size={20} className="text-secondary-text" />
-        </button>
-
-        {/* App Version */}
-        <div className="bg-white rounded-[12px] p-4 flex items-center justify-between border border-[#F0F0F0]">
-          <div>
-            <div className="font-medium text-primary-text">App Version</div>
-            <div className="text-xs text-secondary-text mt-1">
-              1.0.0
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} className="sr-only peer" />
+                <div className="h-6 w-11 rounded-full bg-[#dbe2eb] peer-checked:bg-primary after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full" />
+              </label>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Footer */}
-      <div className="mt-8 pt-6 border-t border-[#E5E7EB] text-center">
-        <p className="text-xs text-secondary-text">
-          Built with care for your job search journey
-        </p>
-      </div>
+      <section>
+        <p className="group-label">Data</p>
+        <div className="surface-card p-2">
+          <button onClick={handleExportData} className="form-row w-full text-left">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><Download size={16} /></div>
+                <div>
+                  <p className="text-sm font-semibold text-[#0f172a]">Export data</p>
+                  <p className="text-xs text-[#6b7280]">Download your applications as CSV</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-[#9aa3b2]" />
+            </div>
+          </button>
+
+          <button onClick={handleDeleteAll} className="form-row form-row-divider w-full text-left">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-rose-50 text-rose-600"><Trash2 size={16} /></div>
+                <div>
+                  <p className="text-sm font-semibold text-rose-700">Delete all applications</p>
+                  <p className="text-xs text-[#6b7280]">Permanently remove tracker data</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-[#9aa3b2]" />
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <p className="group-label">App info</p>
+        <div className="surface-card p-2">
+          <div className="form-row">
+            <div className="flex items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><Info size={16} /></div>
+              <div>
+                <p className="text-sm font-semibold text-[#0f172a]">Job Interview Tracker</p>
+                <p className="text-xs text-[#6b7280]">Version 2.0 · Mobile-first redesign</p>
+              </div>
+            </div>
+          </div>
+          <div className="form-row form-row-divider">
+            <div className="flex items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><Shield size={16} /></div>
+              <div>
+                <p className="text-sm font-semibold text-[#0f172a]">Privacy-first architecture</p>
+                <p className="text-xs text-[#6b7280]">Ready for future auth and cloud sync integrations</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

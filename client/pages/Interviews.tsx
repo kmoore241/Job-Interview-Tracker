@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock3, MapPin } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useApplications } from "@/context/ApplicationContext";
-import { formatLocalYMD } from "@/lib/dates";
+import { formatLocalYMD, parseLocalDate } from "@/lib/dates";
 
 export default function Interviews() {
   const location = useLocation();
@@ -10,36 +10,26 @@ export default function Interviews() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  // Read day from query params on mount
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const day = params.get("day");
     if (day) {
-      const [yyyy, mm, dd] = day.split("-");
-      setSelectedDate(new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd)));
+      setSelectedDate(parseLocalDate(day));
+      setCurrentDate(parseLocalDate(day));
     }
   }, [location.search]);
 
-  // Build interview lookup map by day from applications
   const interviewsByDay = useMemo(() => {
     const map = new Map<string, ReturnType<typeof getInterviewsByDate>>();
-
-    // Create a set of all unique dates in applications
     const allDates = new Set<string>();
+
     applications.forEach((app) => {
-      if (app.interviewDate) {
-        allDates.add(app.interviewDate);
-      }
+      if (app.interviewDate) allDates.add(app.interviewDate);
     });
 
-    // Build the map for each date with interviews
     allDates.forEach((dateKey) => {
-      const [y, m, d] = dateKey.split("-").map(Number);
-      const dateObj = new Date(y, m - 1, d);
-      const interviews = getInterviewsByDate(dateObj);
-      if (interviews.length > 0) {
-        map.set(dateKey, interviews);
-      }
+      const interviews = getInterviewsByDate(parseLocalDate(dateKey));
+      if (interviews.length > 0) map.set(dateKey, interviews);
     });
 
     return map;
@@ -47,154 +37,105 @@ export default function Interviews() {
 
   const monthName = currentDate.toLocaleString("default", { month: "long" });
   const year = currentDate.getFullYear();
-
   const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
   const daysInMonth = lastDay.getDate();
   const startingDayOfWeek = firstDay.getDay();
 
   const days: (number | null)[] = [];
-  for (let i = 0; i < startingDayOfWeek; i++) {
-    days.push(null);
-  }
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push(i);
-  }
-
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
-  };
-
-  const handleDateClick = (day: number) => {
-    setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
-  };
+  for (let i = 0; i < startingDayOfWeek; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
   const selectedKey = formatLocalYMD(selectedDate);
   const selectedInterviews = interviewsByDay.get(selectedKey) ?? [];
+  const todayKey = formatLocalYMD(new Date());
 
   return (
-    <div className="px-4 pt-6 pb-4">
-      <h1 className="text-2xl font-semibold text-primary-text mb-6">Interviews</h1>
+    <div className="page-container space-y-6">
+      <header>
+        <h1 className="page-title">Interviews</h1>
+        <p className="page-subtitle">Calendar-first scheduling with timezone-safe interview dates.</p>
+      </header>
 
-      {/* Calendar */}
-      <div className="bg-white rounded-[16px] p-4 mb-6 shadow-sm">
-        {/* Month Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-primary-text">
-            {monthName} {year}
-          </h2>
+      <section className="surface-card p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-[#0f172a]">{monthName} {year}</h2>
           <div className="flex gap-2">
-            <button
-              onClick={handlePrevMonth}
-              className="p-2 hover:bg-[#F9FAFB] rounded-lg transition"
-            >
-              <ChevronLeft size={20} className="text-primary-text" />
+            <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))} className="grid h-9 w-9 place-items-center rounded-xl bg-[#f4f6fa] text-[#334155]">
+              <ChevronLeft size={18} />
             </button>
-            <button
-              onClick={handleNextMonth}
-              className="p-2 hover:bg-[#F9FAFB] rounded-lg transition"
-            >
-              <ChevronRight size={20} className="text-primary-text" />
+            <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))} className="grid h-9 w-9 place-items-center rounded-xl bg-[#f4f6fa] text-[#334155]">
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>
 
-        {/* Day Headers */}
-        <div className="grid grid-cols-7 gap-2 mb-2">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div
-              key={day}
-              className="text-center text-sm font-medium text-secondary-text py-2"
-            >
-              {day}
-            </div>
+        <div className="mb-2 grid grid-cols-7 gap-2">
+          {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
+            <div key={day} className="text-center text-xs font-semibold text-[#8a94a6] py-1">{day}</div>
           ))}
         </div>
 
-        {/* Calendar Days */}
         <div className="grid grid-cols-7 gap-2">
           {days.map((day, index) => {
-            if (!day) {
-              return <div key={index} />;
-            }
+            if (!day) return <div key={`empty-${index}`} />;
 
-            const dateObj = new Date(
-              currentDate.getFullYear(),
-              currentDate.getMonth(),
-              day
-            );
+            const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
             const key = formatLocalYMD(dateObj);
-            const isSelected = formatLocalYMD(selectedDate) === key;
+            const isSelected = selectedKey === key;
+            const isToday = todayKey === key;
             const hasInterview = interviewsByDay.has(key);
 
             return (
               <button
-                key={index}
-                onClick={() => handleDateClick(day)}
-                className={`relative p-2 rounded-lg text-center transition ${
+                key={key}
+                onClick={() => setSelectedDate(dateObj)}
+                className={`relative h-10 rounded-xl text-sm transition ${
                   isSelected
-                    ? "bg-primary text-white font-semibold"
-                    : "text-primary-text hover:bg-[#F9FAFB]"
+                    ? "bg-primary text-white font-semibold shadow-[0_6px_16px_rgba(59,130,246,0.35)]"
+                    : isToday
+                    ? "bg-[#dbeafe] text-primary font-semibold"
+                    : "text-[#334155] hover:bg-[#f4f6fa]"
                 }`}
               >
                 {day}
-                {hasInterview && !isSelected && (
-                  <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary rounded-full" />
+                {hasInterview && (
+                  <span
+                    className={`absolute left-1/2 top-[31px] h-1.5 w-1.5 -translate-x-1/2 rounded-full ${
+                      isSelected ? "bg-white" : "bg-amber-500"
+                    }`}
+                  />
                 )}
               </button>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      {/* Selected Date Interviews */}
-      {selectedDate && (
-        <div>
-          <h3 className="text-lg font-semibold text-primary-text mb-4">
-            {selectedDate.toLocaleDateString("default", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
-          </h3>
+      <section className="space-y-3">
+        <h3 className="section-title">
+          {selectedDate.toLocaleDateString("default", { weekday: "long", month: "long", day: "numeric" })}
+        </h3>
 
-          {selectedInterviews.length > 0 ? (
-            <div className="space-y-3">
-              {selectedInterviews.map((interview) => (
-                <Link
-                  key={interview.id}
-                  to={`/interviews/${interview.id}`}
-                  className="block bg-[#FFFBEB] rounded-[16px] p-4 border border-[#FEF3C7] hover:shadow-md hover:border-warning transition group"
-                  style={{ minHeight: "80px" }}
-                >
-                  <div className="font-semibold text-primary-text mb-1 group-hover:text-primary">
-                    {interview.company}
-                  </div>
-                  <div className="text-sm text-secondary-text mb-2">
-                    {interview.role}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-secondary-text mb-1">
-                    <Clock size={14} />
-                    {interview.time}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-secondary-text">
-                    <MapPin size={14} />
-                    {interview.location}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-secondary-text text-sm text-center py-6">
-              No interviews scheduled for this date
-            </p>
-          )}
-        </div>
-      )}
+        {selectedInterviews.length > 0 ? (
+          selectedInterviews.map((interview) => (
+            <Link key={interview.id} to={`/interviews/${interview.id}`} className="list-row">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-50 text-amber-700">
+                <Clock3 size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-[#0f172a]">{interview.company}</p>
+                <p className="truncate text-xs text-[#6b7280]">{interview.role} · {interview.time}</p>
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-[#7b8495]">
+                  <MapPin size={12} /> {interview.location}
+                </p>
+              </div>
+            </Link>
+          ))
+        ) : (
+          <div className="surface-card p-6 text-sm text-[#6b7280] text-center">No interviews scheduled for this date.</div>
+        )}
+      </section>
     </div>
   );
 }

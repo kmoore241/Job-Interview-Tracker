@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
-import { formatLocalYMD } from "../lib/dates";
+import { formatLocalYMD, parseLocalDate } from "../lib/dates";
 
 export interface Application {
   id: string;
@@ -250,9 +250,9 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
       .filter((a) => a.interviewDate)
       .map((a) => ({
         ...a,
-        interviewDateObj: new Date(a.interviewDate!),
+        interviewDateObj: parseLocalDate(a.interviewDate!),
       }))
-      .filter((a) => a.interviewDateObj >= new Date(new Date().toISOString().split("T")[0]))
+      .filter((a) => a.interviewDateObj >= parseLocalDate(formatLocalYMD(new Date())))
       .sort((a, b) => a.interviewDateObj.getTime() - b.interviewDateObj.getTime());
 
     const next = upcoming[0];
@@ -270,13 +270,13 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
   };
 
   const getUpcomingInterviews = () => {
-    const today = new Date(new Date().toISOString().split("T")[0]);
+    const today = parseLocalDate(formatLocalYMD(new Date()));
     const now = today.getTime();
 
     return applications
       .filter((a) => a.interviewDate)
       .map((a) => {
-        const dateObj = new Date(a.interviewDate!);
+        const dateObj = parseLocalDate(a.interviewDate!);
         return {
           id: a.id,
           company: a.company,
