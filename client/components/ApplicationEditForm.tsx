@@ -3,6 +3,7 @@ import { useApplications } from "@/context/ApplicationContext";
 import { Application } from "@/context/ApplicationContext";
 import { parseLocalDate } from "@/lib/dates";
 import { validateApplicationForm, ValidationErrors, hasErrors } from "@/lib/validation";
+import { toTimeInputValue } from "@/lib/time";
 
 interface ApplicationEditFormProps {
   application: Application;
@@ -21,7 +22,7 @@ export default function ApplicationEditForm({ application, onSave, onCancel }: A
     status: application.status,
     dateApplied: application.dateApplied.split("T")[0],
     interviewDate: application.interviewDate || "",
-    interviewTime: application.interviewTime || "",
+    interviewTime: toTimeInputValue(application.interviewTime),
     location: application.location || "",
     notes: application.notes,
     remindersEnabled: application.reminders?.enabled || false,

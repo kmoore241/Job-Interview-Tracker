@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Sparkles, CalendarDays, LineChart, PlusCircle } from "lucide-react";
 
 interface OnboardingModalProps {
@@ -6,6 +7,30 @@ interface OnboardingModalProps {
 }
 
 export default function OnboardingModal({ open, onClose }: OnboardingModalProps) {
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/40 p-4 flex items-end sm:items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Welcome to Job Interview Tracker"
+      onClick={onClose}
+    >
+      <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
   if (!open) return null;
 
   return (
