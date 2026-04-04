@@ -31,6 +31,11 @@ export default function OnboardingModal({ open, onClose }: OnboardingModalProps)
       onClick={onClose}
     >
       <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 p-4 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-label="Welcome to Job Interview Tracker">
+      <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
         <div className="mb-4 inline-flex rounded-2xl bg-blue-50 p-2 text-primary">
           <Sparkles size={20} />
         </div>
