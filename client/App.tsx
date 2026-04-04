@@ -7,6 +7,7 @@ import AddApplication from "./pages/AddApplication";
 import Interviews from "./pages/Interviews";
 import InterviewDetail from "./pages/InterviewDetail";
 import Settings from "./pages/Settings";
+import Insights from "./pages/Insights";
 import NotFound from "./pages/NotFound";
 import { useInterviewReminders } from "@/hooks/useInterviewReminders";
 
@@ -61,6 +62,14 @@ export default function App() {
         element={
           <Layout>
             <InterviewDetail />
+          </Layout>
+        }
+      />
+      <Route
+        path="/insights"
+        element={
+          <Layout>
+            <Insights />
           </Layout>
         }
       />
