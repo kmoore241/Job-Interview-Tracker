@@ -27,6 +27,12 @@ export default function ApplicationDetail() {
     );
   }
 
+  const handleDelete = () => {
+    if (window.confirm(`Delete application for ${application.company}? This cannot be undone.`)) {
+      deleteApplication(application.id);
+      navigate("/applications");
+    }
+  };
 
   if (isEditing) {
     return (
@@ -93,6 +99,7 @@ export default function ApplicationDetail() {
 
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => setIsEditing(true)} className="rounded-2xl bg-primary text-white py-3 font-semibold inline-flex items-center justify-center gap-2"><Edit2 size={16} />Edit</button>
+        <button onClick={handleDelete} className="rounded-2xl bg-rose-600 text-white py-3 font-semibold inline-flex items-center justify-center gap-2"><Trash2 size={16} />Delete</button>
         <button onClick={() => setShowDeleteConfirm(true)} className="rounded-2xl bg-rose-600 text-white py-3 font-semibold inline-flex items-center justify-center gap-2"><Trash2 size={16} />Delete</button>
       </div>
 

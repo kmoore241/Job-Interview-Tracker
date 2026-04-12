@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Bell, ChevronRight, Download, Info, Shield, Trash2 } from "lucide-react";
 import { Bell, ChevronRight, Cloud, Download, Info, Shield, Trash2 } from "lucide-react";
 import { useApplications } from "@/context/ApplicationContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -16,6 +17,10 @@ export default function Settings() {
     setStatusMessage("Export functionality is stubbed and ready for CSV implementation.");
   };
 
+  const handleDeleteAll = () => {
+    if (window.confirm("Are you sure you want to delete all applications? This cannot be undone.")) {
+      alert("All applications deleted");
+    }
   const handleSyncNow = async () => {
     setSyncStatus("syncing");
     const result = await syncAdapter.syncNow();
@@ -49,6 +54,7 @@ export default function Settings() {
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} className="sr-only peer" />
                 <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} className="sr-only peer" aria-label="Enable notifications" />
                 <div className="h-6 w-11 rounded-full bg-[#dbe2eb] peer-checked:bg-primary after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full" />
               </label>
@@ -58,6 +64,9 @@ export default function Settings() {
       </section>
 
       <section>
+        <p className="group-label">Data</p>
+        <div className="surface-card p-2">
+          <button onClick={handleExportData} className="form-row w-full text-left">
         <p className="group-label">Data & sync</p>
         <div className="surface-card p-2">
           <button onClick={handleExportData} className="form-row w-full text-left" aria-label="Export data">
@@ -73,6 +82,18 @@ export default function Settings() {
             </div>
           </button>
 
+          <button onClick={handleDeleteAll} className="form-row form-row-divider w-full text-left">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-rose-50 text-rose-600"><Trash2 size={16} /></div>
+                <div>
+                  <p className="text-sm font-semibold text-rose-700">Delete all applications</p>
+                  <p className="text-xs text-[#6b7280]">Permanently remove tracker data</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-[#9aa3b2]" />
+            </div>
+          </button>
           <button onClick={handleSyncNow} className="form-row form-row-divider w-full text-left" aria-label="Sync now">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -109,6 +130,7 @@ export default function Settings() {
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><Info size={16} /></div>
               <div>
                 <p className="text-sm font-semibold text-[#0f172a]">Job Interview Tracker</p>
+                <p className="text-xs text-[#6b7280]">Version 2.0 · Mobile-first redesign</p>
                 <p className="text-xs text-[#6b7280]">Version 2.1 · App Store polish pass</p>
               </div>
             </div>
@@ -117,6 +139,8 @@ export default function Settings() {
             <div className="flex items-center gap-3">
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><Shield size={16} /></div>
               <div>
+                <p className="text-sm font-semibold text-[#0f172a]">Privacy-first architecture</p>
+                <p className="text-xs text-[#6b7280]">Ready for future auth and cloud sync integrations</p>
                 <p className="text-sm font-semibold text-[#0f172a]">Platform mode</p>
                 <p className="text-xs text-[#6b7280]">{isNativePlatform() ? "Running in native shell" : "Running in web mode"}</p>
               </div>

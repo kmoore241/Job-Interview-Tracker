@@ -3,6 +3,7 @@ import { ArrowRight, Briefcase, CalendarClock, CheckCircle2, CircleX, TrendingUp
 import { useApplications } from "@/context/ApplicationContext";
 
 export default function Dashboard() {
+  const { applications, getApplicationStats, getUpcomingInterviews } = useApplications();
   const { applications, getApplicationStats, getUpcomingInterviews, isHydrating } = useApplications();
   const stats = getApplicationStats();
   const upcoming = getUpcomingInterviews().slice(0, 3);
@@ -99,6 +100,7 @@ export default function Dashboard() {
       <section className="space-y-3">
         <h2 className="section-title">Recent activity</h2>
         <div className="surface-card p-2">
+          {recent.map((app, idx) => (
           {recent.length === 0 ? (
             <div className="form-row text-sm text-[#64748b]">No activity yet. Add your first application to begin.</div>
           ) : recent.map((app, idx) => (

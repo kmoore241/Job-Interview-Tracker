@@ -84,6 +84,9 @@ export default function ApplicationEditForm({ application, onSave, onCancel }: A
           : undefined,
       });
 
+      onSave?.();
+    } catch (error) {
+      console.error("Error updating application:", error);
       setSubmitMessage("Changes saved.");
       onSave?.();
     } catch (error) {

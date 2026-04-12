@@ -1,3 +1,5 @@
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { formatLocalYMD, parseLocalDate } from "../lib/dates";
 import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { formatLocalYMD, parseLocalDate } from "../lib/dates";
 
@@ -362,6 +364,10 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
   const getNextInterview = () => {
     const upcoming = applications
       .filter((a) => a.interviewDate)
+      .map((a) => ({
+        ...a,
+        interviewDateObj: parseLocalDate(a.interviewDate!),
+      }))
       .map((a) => ({ ...a, interviewDateObj: parseLocalDate(a.interviewDate!) }))
       .filter((a) => a.interviewDateObj >= parseLocalDate(formatLocalYMD(new Date())))
       .sort((a, b) => a.interviewDateObj.getTime() - b.interviewDateObj.getTime());
