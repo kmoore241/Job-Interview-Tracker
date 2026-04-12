@@ -1,9 +1,11 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Clock, MapPin, Building2, Briefcase, Edit2 } from "lucide-react";
+import { ArrowLeft, Briefcase, Building2, Clock, Edit2, MapPin } from "lucide-react";
 import { useApplications } from "@/context/ApplicationContext";
 import { useState } from "react";
 import ApplicationEditForm from "@/components/ApplicationEditForm";
 import { useBackspacePrevention } from "@/hooks/useBackspacePrevention";
+import { STATUS_STYLES } from "@/lib/status";
+import { parseLocalDate } from "@/lib/dates";
 
 export default function InterviewDetail() {
   const { id } = useParams<{ id: string }>();
@@ -16,173 +18,83 @@ export default function InterviewDetail() {
 
   if (!application || !application.interviewDate) {
     return (
-      <div className="px-4 pt-6 pb-4 flex flex-col items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-secondary-text mb-4">Interview not found</p>
-          <Link
-            to="/interviews"
-            className="text-primary font-medium hover:underline"
-          >
-            Back to Interviews
-          </Link>
-        </div>
+      <div className="page-container text-center">
+        <p className="text-sm text-[#6b7280]">Interview not found</p>
+        <Link to="/interviews" className="mt-3 inline-block text-sm font-semibold text-primary">Back to Interviews</Link>
       </div>
     );
   }
 
-  // Parse the YYYY-MM-DD format safely to a Date object
-  const interviewDate = application.interviewDate
-    ? new Date(application.interviewDate)
-    : new Date();
+  const interviewDate = parseLocalDate(application.interviewDate);
 
   if (isEditing) {
     return (
-      <div className="px-4 pt-6 pb-4">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => setIsEditing(false)}
-            className="p-2 hover:bg-[#F0F0F0] rounded-lg transition"
-          >
-            <ArrowLeft size={24} className="text-primary" />
+      <div className="page-container space-y-5">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setIsEditing(false)} className="grid h-10 w-10 place-items-center rounded-xl bg-white shadow-sm">
+            <ArrowLeft size={18} />
           </button>
-          <h1 className="text-2xl font-semibold text-primary-text">
-            Edit Interview
-          </h1>
+          <h1 className="page-title text-[30px]">Edit Interview</h1>
         </div>
-
-        {/* Edit Form */}
-        <div className="bg-white rounded-[16px] p-6 shadow-sm border border-[#F0F0F0]">
-          <ApplicationEditForm
-            application={application}
-            onSave={() => setIsEditing(false)}
-            onCancel={() => setIsEditing(false)}
-          />
-        </div>
+        <ApplicationEditForm application={application} onSave={() => setIsEditing(false)} onCancel={() => setIsEditing(false)} />
       </div>
     );
   }
 
   return (
-    <div className="px-4 pt-6 pb-4">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => navigate("/interviews")}
-          className="p-2 hover:bg-[#F0F0F0] rounded-lg transition"
-        >
-          <ArrowLeft size={24} className="text-primary" />
+    <div className="page-container space-y-5">
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate("/interviews")} className="grid h-10 w-10 place-items-center rounded-xl bg-white shadow-sm">
+          <ArrowLeft size={18} />
         </button>
-        <h1 className="text-2xl font-semibold text-primary-text">
-          Interview
-        </h1>
+        <h1 className="page-title text-[30px]">Interview</h1>
       </div>
 
-      {/* Main Card */}
-      <div className="bg-[#FFFBEB] rounded-[16px] p-6 border border-[#FEF3C7] mb-6">
-        {/* Company and Role */}
-        <div className="mb-6">
-          <div className="flex items-start gap-3 mb-4">
-            <Building2 size={24} className="text-warning flex-shrink-0" />
-            <div>
-              <div className="text-sm text-secondary-text">Company</div>
-              <div className="text-xl font-semibold text-primary-text">
-                {application.company}
-              </div>
-            </div>
-          </div>
-
+      <section className="surface-card p-5 space-y-5">
+        <div className="space-y-3">
           <div className="flex items-start gap-3">
-            <Briefcase size={24} className="text-primary flex-shrink-0" />
+            <Building2 size={18} className="text-primary mt-1" />
             <div>
-              <div className="text-sm text-secondary-text">Role</div>
-              <div className="text-xl font-semibold text-primary-text">
-                {application.role}
-              </div>
+              <p className="text-xs text-[#6b7280]">Company</p>
+              <p className="text-lg font-semibold text-[#0f172a]">{application.company}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Briefcase size={18} className="text-primary mt-1" />
+            <div>
+              <p className="text-xs text-[#6b7280]">Role</p>
+              <p className="text-lg font-semibold text-[#0f172a]">{application.role}</p>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-[#FEF3C7] pt-6">
-          {/* Date and Time */}
-          <div className="space-y-4 mb-6">
-            <div className="flex items-start gap-3">
-              <Clock size={20} className="text-primary mt-1 flex-shrink-0" />
-              <div>
-                <div className="text-sm text-secondary-text">Date & Time</div>
-                <div className="text-base font-medium text-primary-text">
-                  {interviewDate.toLocaleDateString("default", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </div>
-                {application.interviewTime && (
-                  <div className="text-base font-medium text-primary-text">
-                    {application.interviewTime}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <MapPin size={20} className="text-error mt-1 flex-shrink-0" />
-              <div>
-                <div className="text-sm text-secondary-text">Location</div>
-                <div className="text-base font-medium text-primary-text">
-                  {application.location || "TBD"}
-                </div>
-              </div>
+        <div className="border-t border-[#edf0f5] pt-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <Clock size={18} className="text-amber-600 mt-1" />
+            <div>
+              <p className="text-xs text-[#6b7280]">Date & Time</p>
+              <p className="text-sm font-semibold text-[#0f172a]">{interviewDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
+              <p className="text-xs text-[#6b7280]">{application.interviewTime || "Time TBD"}</p>
             </div>
           </div>
-
-          {/* Edit Button */}
-          <button
-            onClick={() => setIsEditing(true)}
-            className="mt-6 w-full bg-[#F3F4F6] text-primary-text font-medium rounded-[12px] py-3 hover:bg-[#E5E7EB] transition flex items-center justify-center gap-2"
-          >
-            <Edit2 size={18} />
-            Edit Interview
-          </button>
-
-          {/* Application Status */}
-          <div className="mt-6 pt-6 border-t border-[#FEF3C7]">
-            <div className="text-sm text-secondary-text mb-2">
-              Application Status
-            </div>
-            <div
-              className="inline-block px-4 py-2 rounded-full text-sm font-medium"
-              style={{
-                backgroundColor:
-                  application.status === "Applied"
-                    ? "#DFF3FF"
-                    : application.status === "Interview"
-                    ? "#FFEDD5"
-                    : application.status === "Rejected"
-                    ? "#FEE2E2"
-                    : "#EDD5FF",
-                color:
-                  application.status === "Applied"
-                    ? "#3B82F6"
-                    : application.status === "Interview"
-                    ? "#F59E0B"
-                    : application.status === "Rejected"
-                    ? "#EF4444"
-                    : "#8B5CF6",
-              }}
-            >
-              {application.status}
+          <div className="flex items-start gap-3">
+            <MapPin size={18} className="text-rose-500 mt-1" />
+            <div>
+              <p className="text-xs text-[#6b7280]">Location</p>
+              <p className="text-sm font-semibold text-[#0f172a]">{application.location || "TBD"}</p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Navigation */}
-      <Link
-        to={`/applications/${application.id}`}
-        className="block w-full bg-primary text-white font-medium rounded-[12px] py-3 text-center hover:bg-blue-600 transition"
-      >
+        <div className="border-t border-[#edf0f5] pt-4">
+          <p className="text-xs text-[#6b7280] mb-2">Application status</p>
+          <span className={`pill ${STATUS_STYLES[application.status].pill}`}>{application.status}</span>
+        </div>
+      </section>
+
+      <button onClick={() => setIsEditing(true)} className="w-full rounded-2xl bg-[#111827] text-white py-3 font-semibold inline-flex items-center justify-center gap-2"><Edit2 size={16} />Edit Interview</button>
+
+      <Link to={`/applications/${application.id}`} className="block w-full rounded-2xl bg-white py-3 text-center text-sm font-semibold text-[#0f172a] shadow-sm">
         View Application Details
       </Link>
     </div>
