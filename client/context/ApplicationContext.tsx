@@ -71,7 +71,153 @@ interface ApplicationContextType {
 
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined);
 
-function createMockApplications(): Application[] {
+function mapDbRowToApplication(row: any): Application {
+  return {
+    id: row.id,
+    company: row.company,
+    role: row.role,
+    status: row.status,
+    dateApplied: row.date_applied,
+    interviewDate: row.interview_date ?? undefined,
+    interviewTime: row.interview_time ?? undefined,
+    location: row.location ?? undefined,
+    notes: row.notes ?? "",
+    initials: row.initials ?? "",
+    reminders: row.reminders ?? undefined,
+    preparation: row.preparation ?? undefined,
+  };
+}
+
+function mapApplicationToDbPayload(app: Omit<Application, "id"> | Partial<Application>) {
+  const payload: Record<string, unknown> = {};
+
+  if (app.company !== undefined) payload.company = app.company;
+  if (app.role !== undefined) payload.role = app.role;
+  if (app.status !== undefined) payload.status = app.status;
+  if (app.dateApplied !== undefined) payload.date_applied = app.dateApplied;
+  if (app.interviewDate !== undefined) payload.interview_date = app.interviewDate ?? null;
+  if (app.interviewTime !== undefined) payload.interview_time = app.interviewTime ?? null;
+  if (app.location !== undefined) payload.location = app.location ?? null;
+  if (app.notes !== undefined) payload.notes = app.notes;
+  if (app.initials !== undefined) payload.initials = app.initials;
+  if (app.reminders !== undefined) payload.reminders = app.reminders ?? null;
+  if (app.preparation !== undefined) payload.preparation = app.preparation ?? null;
+
+  return payload;
+}
+
+export function ApplicationProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadApplications = async () => {
+      if (!user) {
+        setApplications([]);
+        setIsHydrating(false);
+        return;
+      }
+
+      setIsHydrating(true);
+      const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .order("date_applied", { ascending: false })
+        .execute();
+
+      if (error) {
+        setPersistenceError(error.message);
+        setApplications([]);
+      } else {
+        setPersistenceError(null);
+        setApplications((data ?? []).map(mapDbRowToApplication));
+      }
+
+      setIsHydrating(false);
+    };
+
+    loadApplications();
+  }, [user]);
+
+  useEffect(() => {
+    const mapped = applications
+      .filter((app) => app.interviewDate)
+      .map((app) => ({
+        id: app.id,
+        company: app.company,
+        role: app.role,
+        time: app.interviewTime ?? "TBD",
+        location: app.location ?? "TBD",
+        date: app.interviewDate ?? "",
+        applicationId: app.id,
+      }));
+
+    setInterviews(mapped);
+  }, [applications]);
+
+  const addApplication = async (app: Omit<Application, "id">) => {
+    if (!user) return;
+
+    const payload = { ...mapApplicationToDbPayload(app), user_id: user.id };
+    const { data, error } = await supabase.from("applications").insert(payload).select("*").single();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) => [mapDbRowToApplication(data), ...prev]);
+  };
+
+  const updateApplication = async (id: string, app: Partial<Application>) => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("applications")
+      .update(mapApplicationToDbPayload(app))
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) => prev.map((a) => (a.id === id ? mapDbRowToApplication(data) : a)));
+  };
+
+  const deleteApplication = async (id: string) => {
+    if (!user) return;
+
+    const { error } = await supabase.from("applications").delete().eq("id", id).execute();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const clearAllApplications = async () => {
+    if (!user) return;
+
+    const { error } = await supabase.from("applications").delete().eq("user_id", user.id).execute();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+  function createMockApplications(): Application[] {
   const today = new Date();
   const in3Days = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
   const in5Days = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
@@ -280,8 +426,6 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
 
 export function useApplications() {
   const context = useContext(ApplicationContext);
-  if (!context) {
-    throw new Error("useApplications must be used within ApplicationProvider");
-  }
+  if (!context) throw new Error("useApplications must be used within ApplicationProvider");
   return context;
 }
