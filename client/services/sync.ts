@@ -4,14 +4,14 @@ export interface SyncAdapter {
   syncNow: () => Promise<{ success: boolean; message: string }>;
 }
 
-export class SupabaseSyncAdapter implements SyncAdapter {
+export class LocalOnlySyncAdapter implements SyncAdapter {
   async syncNow() {
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 600));
     return {
       success: true,
-      message: "Supabase sync is active. Your account data is loaded from cloud storage.",
+      message: "Local-first mode enabled. Cloud sync adapter can be plugged in later.",
     };
   }
 }
 
-export const syncAdapter = new SupabaseSyncAdapter();
+export const syncAdapter = new LocalOnlySyncAdapter();

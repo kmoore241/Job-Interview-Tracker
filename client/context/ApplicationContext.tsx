@@ -1,14 +1,7 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  ReactNode,
-} from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { formatLocalYMD, parseLocalDate } from "../lib/dates";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "./AuthContext";
+
+const STORAGE_KEY = "jit.applications.v1";
 
 export interface Application {
   id: string;
@@ -76,9 +69,7 @@ interface ApplicationContextType {
   }>;
 }
 
-const ApplicationContext = createContext<ApplicationContextType | undefined>(
-  undefined
-);
+const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined);
 
 function mapDbRowToApplication(row: any): Application {
   return {
@@ -97,9 +88,7 @@ function mapDbRowToApplication(row: any): Application {
   };
 }
 
-function mapApplicationToDbPayload(
-  app: Omit<Application, "id"> | Partial<Application>
-): Record<string, unknown> {
+function mapApplicationToDbPayload(app: Omit<Application, "id"> | Partial<Application>) {
   const payload: Record<string, unknown> = {};
 
   if (app.company !== undefined) payload.company = app.company;
@@ -173,11 +162,7 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     const payload = { ...mapApplicationToDbPayload(app), user_id: user.id };
-    const { data, error } = await supabase
-      .from("applications")
-      .insert(payload)
-      .select("*")
-      .single();
+    const { data, error } = await supabase.from("applications").insert(payload).select("*").single();
 
     if (error) {
       setPersistenceError(error.message);
@@ -204,19 +189,13 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
     }
 
     setPersistenceError(null);
-    setApplications((prev) =>
-      prev.map((a) => (a.id === id ? mapDbRowToApplication(data) : a))
-    );
+    setApplications((prev) => prev.map((a) => (a.id === id ? mapDbRowToApplication(data) : a)));
   };
 
   const deleteApplication = async (id: string) => {
     if (!user) return;
 
-    const { error } = await supabase
-      .from("applications")
-      .delete()
-      .eq("id", id)
-      .execute();
+    const { error } = await supabase.from("applications").delete().eq("id", id).execute();
 
     if (error) {
       setPersistenceError(error.message);
@@ -230,11 +209,7 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
   const clearAllApplications = async () => {
     if (!user) return;
 
-    const { error } = await supabase
-      .from("applications")
-      .delete()
-      .eq("user_id", user.id)
-      .execute();
+    const { error } = await supabase.from("applications").delete().eq("user_id", user.id).execute();
 
     if (error) {
       setPersistenceError(error.message);
@@ -242,6 +217,120 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
     }
 
     setPersistenceError(null);
+  function createMockApplications(): Application[] {
+  const today = new Date();
+  const in3Days = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const in5Days = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
+  const in7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  return [
+    {
+      id: "1",
+      company: "Acme Corp",
+      role: "Senior Product Manager",
+      status: "Interview",
+      dateApplied: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      interviewDate: formatLocalYMD(in3Days),
+      interviewTime: "10:00 AM",
+      location: "San Francisco, CA",
+      notes: "Great company, interested in remote options",
+      initials: "AC",
+    },
+    {
+      id: "2",
+      company: "Tech Startup Inc",
+      role: "Full Stack Engineer",
+      status: "Interview",
+      dateApplied: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      interviewDate: formatLocalYMD(in5Days),
+      interviewTime: "2:00 PM",
+      location: "Zoom",
+      notes: "Series B funded, fast-growing",
+      initials: "TS",
+    },
+    {
+      id: "3",
+      company: "Design Co",
+      role: "UI/UX Designer",
+      status: "Rejected",
+      dateApplied: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+      notes: "Rejected after first round",
+      initials: "DC",
+    },
+    {
+      id: "4",
+      company: "Finance Solutions",
+      role: "Data Analyst",
+      status: "Offer",
+      dateApplied: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+      notes: "Pending decision, $120k offer",
+      initials: "FS",
+    },
+  ];
+}
+
+export function ApplicationProvider({ children }: { children: ReactNode }) {
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { applications: Application[] };
+        setApplications(parsed.applications ?? []);
+      } else {
+        setApplications(createMockApplications());
+      }
+    } catch {
+      setApplications(createMockApplications());
+      setPersistenceError("Could not read local data. Using safe defaults.");
+    } finally {
+      setIsHydrating(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isHydrating) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ applications }));
+      setPersistenceError(null);
+    } catch {
+      setPersistenceError("Could not save your latest changes locally.");
+    }
+  }, [applications, isHydrating]);
+
+  useEffect(() => {
+    const mapped = applications
+      .filter((app) => app.interviewDate)
+      .map((app) => ({
+        id: app.id,
+        company: app.company,
+        role: app.role,
+        time: app.interviewTime ?? "TBD",
+        location: app.location ?? "TBD",
+        date: app.interviewDate ?? "",
+        applicationId: app.id,
+      }));
+
+    setInterviews(mapped);
+  }, [applications]);
+
+  const addApplication = (app: Omit<Application, "id">) => {
+    setApplications((prev) => [...prev, { ...app, id: Date.now().toString() }]);
+  };
+
+  const updateApplication = (id: string, app: Partial<Application>) => {
+    setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, ...app } : a)));
+  };
+
+  const deleteApplication = (id: string) => {
+    setApplications((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const clearAllApplications = () => {
     setApplications([]);
   };
 
@@ -332,15 +421,11 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
     [applications, interviews, isHydrating, persistenceError]
   );
 
-  return (
-    <ApplicationContext.Provider value={value}>{children}</ApplicationContext.Provider>
-  );
+  return <ApplicationContext.Provider value={value}>{children}</ApplicationContext.Provider>;
 }
 
 export function useApplications() {
   const context = useContext(ApplicationContext);
-  if (!context) {
-    throw new Error("useApplications must be used within ApplicationProvider");
-  }
+  if (!context) throw new Error("useApplications must be used within ApplicationProvider");
   return context;
 }
