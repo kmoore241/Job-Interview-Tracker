@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Bell, ChevronRight, Cloud, Download, Info, Shield, Trash2 } from "lucide-react";
+import { Bell, ChevronRight, Cloud, Download, Info, LogOut, Shield, Trash2, UserCircle2 } from "lucide-react";
 import { useApplications } from "@/context/ApplicationContext";
+import { useAuth } from "@/context/AuthContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { syncAdapter, SyncStatus } from "@/services/sync";
 import { isNativePlatform } from "@/lib/platform";
@@ -8,9 +9,11 @@ import { isNativePlatform } from "@/lib/platform";
 export default function Settings() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAccountDeleteConfirm, setShowAccountDeleteConfirm] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [statusMessage, setStatusMessage] = useState<string>("");
   const { clearAllApplications } = useApplications();
+  const { user, role, signOut, deleteAccount } = useAuth();
 
   const handleExportData = () => {
     setStatusMessage("Export functionality is stubbed and ready for CSV implementation.");
@@ -27,7 +30,7 @@ export default function Settings() {
     <div className="page-container space-y-6">
       <header>
         <h1 className="page-title">Settings</h1>
-        <p className="page-subtitle">Manage reminders, data, and app preferences.</p>
+        <p className="page-subtitle">Manage reminders, data, and account preferences.</p>
       </header>
 
       {statusMessage && (
@@ -35,6 +38,43 @@ export default function Settings() {
           {statusMessage}
         </div>
       )}
+
+      <section>
+        <p className="group-label">Account</p>
+        <div className="surface-card p-2">
+          <div className="form-row">
+            <div className="flex items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><UserCircle2 size={16} /></div>
+              <div>
+                <p className="text-sm font-semibold text-[#0f172a]">{user?.email ?? "Not signed in"}</p>
+                <p className="text-xs text-[#6b7280]">Role: {role}</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} className="sr-only peer" aria-label="Enable notifications" />
+                <div className="h-6 w-11 rounded-full bg-[#dbe2eb] peer-checked:bg-primary after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full" />
+              </label>
+            </div>
+          </div>
+          <button onClick={() => signOut()} className="form-row form-row-divider w-full text-left" aria-label="Sign out">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><LogOut size={16} /></div>
+                <p className="text-sm font-semibold text-[#0f172a]">Sign out</p>
+              </div>
+              <ChevronRight size={16} className="text-[#9aa3b2]" />
+            </div>
+          </button>
+          <button onClick={() => setShowAccountDeleteConfirm(true)} className="form-row form-row-divider w-full text-left" aria-label="Delete account">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-rose-50 text-rose-600"><Trash2 size={16} /></div>
+                <p className="text-sm font-semibold text-rose-700">Delete account</p>
+              </div>
+              <ChevronRight size={16} className="text-[#9aa3b2]" />
+            </div>
+          </button>
+        </div>
+      </section>
 
       <section>
         <p className="group-label">Preferences</p>
@@ -82,7 +122,7 @@ export default function Settings() {
                   <p className="text-xs text-[#6b7280]">Future-ready hook for cloud sync providers</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold text-[#64748b]">{syncStatus === "syncing" ? "Syncing..." : "Local"}</span>
+              <span className="text-xs font-semibold text-[#64748b]">{syncStatus === "syncing" ? "Syncing..." : "Cloud"}</span>
             </div>
           </button>
 
@@ -109,7 +149,7 @@ export default function Settings() {
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><Info size={16} /></div>
               <div>
                 <p className="text-sm font-semibold text-[#0f172a]">Job Interview Tracker</p>
-                <p className="text-xs text-[#6b7280]">Version 2.1 · App Store polish pass</p>
+                <p className="text-xs text-[#6b7280]">Version 2.2 · Supabase auth + cloud data</p>
               </div>
             </div>
           </div>
@@ -128,7 +168,7 @@ export default function Settings() {
       <ConfirmDialog
         open={showDeleteConfirm}
         title="Delete all applications?"
-        description="This removes all job applications and interview entries from local storage."
+        description="This removes all your application records from cloud storage."
         confirmLabel="Delete All"
         tone="danger"
         onCancel={() => setShowDeleteConfirm(false)}
@@ -137,6 +177,26 @@ export default function Settings() {
           setShowDeleteConfirm(false);
           setStatusMessage("All application records were removed.");
           setSyncStatus("success");
+        }}
+      />
+
+      <ConfirmDialog
+        open={showAccountDeleteConfirm}
+        title="Delete account?"
+        description="Your account and all associated data will be permanently deleted."
+        confirmLabel="Delete Account"
+        tone="danger"
+        onCancel={() => setShowAccountDeleteConfirm(false)}
+        onConfirm={async () => {
+          const result = await deleteAccount();
+          setShowAccountDeleteConfirm(false);
+          if (result.error) {
+            setStatusMessage(result.error);
+            setSyncStatus("error");
+          } else {
+            setStatusMessage("Account deleted.");
+            setSyncStatus("success");
+          }
         }}
       />
     </div>

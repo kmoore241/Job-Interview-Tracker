@@ -132,14 +132,6 @@ export default function App() {
         }
       />
       <Route
-        path="/insights"
-        element={
-          <Layout>
-            <Insights />
-          </Layout>
-        }
-      />
-      <Route
         path="/settings"
         element={
           <RequireAuth>

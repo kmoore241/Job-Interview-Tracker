@@ -1,154 +1,96 @@
 # Job Interview Tracker
 
-A polished, mobile-first job search companion for tracking applications, interviews, and outcomes with clean analytics and timezone-safe scheduling.
+A mobile-first interview tracker built with React + TypeScript, now with **Supabase Auth** and **user-scoped cloud data**.
 
 ## Overview
 
-Job Interview Tracker helps you manage the full interview pipeline in one place. You can add and edit applications, schedule interviews, review upcoming events in a calendar view, and monitor conversion rates through lightweight insights.
+Job Interview Tracker helps you track applications, interview schedules, and outcomes in one place. Phase two adds secure authentication and per-user data isolation so each account sees only its own records.
 
-The interface uses an Apple-inspired visual language focused on clarity, hierarchy, and calm spacing, now hardened with onboarding, empty states, confirmation dialogs, and resilient local persistence.
+## Auth Features (Phase Two)
 
-## Key Features
+- Email/password sign up
+- Email/password sign in
+- Google OAuth sign in
+- Password reset email flow
+- Session persistence (Supabase)
+- Sign out
+- Self-service account deletion via secure RPC
+- Role support: `user` (default), `admin`
+- Separate `/admin/login` route using the same Supabase auth backend
 
-- Full application CRUD (create, view, edit, delete)
-- Status tracking: Applied, Interview, Offer, Rejected
-- Interview planning with date, time, and location
-- Timezone-safe interview date handling (`YYYY-MM-DD` local date flow)
-- Search, filtering, and sorting on Applications
-- Dashboard with summary stats, upcoming interviews, and recent activity
-- Insights screen with rates and trend summaries
-- Grouped, native-feeling forms and settings layout
-- Mobile tab navigation with floating add action
-- First-run onboarding modal
-- Loading, empty, success/error, and confirmation states across key flows
-- Local-first persistence with future-ready sync adapter hooks
+## Data Ownership & Privacy
 
-## Screens / Sections
-
-### 1) Dashboard
-High-level overview of your pipeline:
-- KPI cards
-- Pipeline health and interview rate
-- Upcoming interviews
-- Recent application activity
-- loading and empty-state feedback
-
-### 2) Applications
-Main list management screen:
-- Search bar
-- Status filtering
-- Sort options (Newest / Company)
-- Cleaner detail rows and quick delete affordance
-- confirmation dialog for delete
-
-### 3) Interviews
-Calendar and agenda workflow:
-- Monthly calendar with selected-day emphasis
-- Interview indicator dots by date
-- Selected-day interview agenda list
-- Link-through to interview detail/edit
-
-### 4) Insights
-Performance-focused analytics:
-- Total applications
-- Interview rate
-- Offer rate
-- Rejection rate
-- 4-month trend summary bars
-
-### 5) Settings
-Grouped app preferences and metadata:
-- Notification toggle
-- Export data action (placeholder)
-- Sync action via local-first adapter (cloud-ready)
-- Delete-all confirmation flow
-- App info + platform mode info
+- Application records are stored in Supabase table `applications`.
+- Every record includes a `user_id` owner.
+- Row-Level Security (RLS) policies enforce owner-only access for normal users.
+- Users can only read/write/delete rows where `user_id = auth.uid()`.
+- Notes, interview fields, reminders, and prep data are stored within each user-owned application record.
 
 ## Tech Stack
 
-- **Frontend:** React 18 + TypeScript + Vite
-- **Routing:** React Router 6 (SPA)
-- **Styling:** TailwindCSS 3 + design tokens in `client/global.css`
-- **Icons:** Lucide React
-- **Backend:** Express (integrated dev server architecture)
-- **Validation:** Custom validation helpers in `client/lib/validation.ts`
-- **Testing:** Vitest
-- **Package manager:** pnpm
+- React 18 + TypeScript + Vite
+- React Router 6
+- TailwindCSS 3
+- Supabase Auth + PostgREST API for auth + database
+- Vitest
 
-## Run Locally
+## Required Environment Variables
 
-### Prerequisites
-- Node.js 18+
-- pnpm
+Create `.env.local`:
 
-### Commands
+```bash
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+```
+
+## Supabase Setup
+
+1. Create a Supabase project.
+2. Run SQL from `supabase/schema.sql` in the Supabase SQL editor.
+3. In Supabase Auth:
+   - Enable Email provider
+   - Enable Google provider (optional but required for Google sign-in)
+4. Add redirect URLs (local + production) for auth callbacks.
+5. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` locally and in deployment env vars.
+
+## Local Development
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Then open `http://localhost:8080`.
-
-Other useful commands:
+Useful checks:
 
 ```bash
+npm run build:client
 pnpm typecheck
 pnpm test
-pnpm build
-pnpm start
 ```
 
-## Project Structure
+## Current Routes
 
-```text
-client/
-  components/        # Reusable UI and feature components
-  context/           # Application state + local persistence
-  hooks/             # UI and reminder hooks
-  lib/               # Date helpers, validation, utilities, platform helpers
-  pages/             # App screens (Dashboard, Applications, etc.)
-  services/          # Sync/auth-ready service adapters
-  global.css         # Tokens + reusable style primitives
+- `/auth/login`
+- `/auth/signup`
+- `/auth/reset`
+- `/admin/login`
+- `/admin` (admin-role guarded)
+- Main app routes remain protected behind authenticated sessions.
 
-server/
-  index.ts           # Express setup
-  routes/            # API route handlers
+## Timezone-Safe Date Handling
 
-shared/
-  api.ts             # Shared types for client/server
+Interview dates are handled as local `YYYY-MM-DD` values using:
+- `parseLocalDate()`
+- `formatLocalYMD()`
 
-capacitor.config.ts  # Starter config for native shell packaging
-```
+This avoids off-by-one issues across timezones in calendar/list/detail views.
 
-## Future Improvements / Roadmap
+## Migration Notes
 
-- Add real authentication provider (Supabase/Firebase/Auth0)
-- Replace local sync adapter with authenticated cloud sync
-- Add conflict resolution + offline queue strategy
-- Introduce richer chart visualizations for insights
-- Implement production CSV export and import
-- Add push notifications for interview reminders
-- Expand Capacitor setup with iOS/Android build scripts and CI
-
-## Timezone-Safe Date Handling Notes
-
-Interview dates are intentionally handled as **local date strings** (`YYYY-MM-DD`) rather than direct UTC timestamps. This prevents the common “one day off” issue when users are in different timezones.
-
-Core helpers:
-- `parseLocalDate()` in `client/lib/dates.ts`
-- `formatLocalYMD()` in `client/lib/dates.ts`
-
-These helpers are used in scheduling flows and calendar matching to keep date behavior consistent.
-
-## App Store / Capacitor Readiness Notes
-
-- `capacitor.config.ts` is included as a baseline native packaging config.
-- UI includes safe-area-aware nav/FAB spacing for mobile devices.
-- Platform detection helper (`client/lib/platform.ts`) is in place for native/web branching.
-- Sync service abstraction (`client/services/sync.ts`) is ready to swap to real cloud backends.
+- Local-only persistence has been replaced by user-scoped cloud persistence when authenticated.
+- Existing workflows (add/edit/delete, dashboard/interviews/insights derivations) remain the same.
+- Account and role data are managed through Supabase `auth.users` + `profiles`.
 
 ## Author
 
-**Kennedy**  
-Built as a portfolio-ready mobile product concept focused on practical job search workflow design.
+Kennedy
