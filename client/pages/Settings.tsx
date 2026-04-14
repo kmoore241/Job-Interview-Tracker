@@ -49,6 +49,10 @@ export default function Settings() {
                 <p className="text-sm font-semibold text-[#0f172a]">{user?.email ?? "Not signed in"}</p>
                 <p className="text-xs text-[#6b7280]">Role: {role}</p>
               </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} className="sr-only peer" aria-label="Enable notifications" />
+                <div className="h-6 w-11 rounded-full bg-[#dbe2eb] peer-checked:bg-primary after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full" />
+              </label>
             </div>
           </div>
           <button onClick={() => signOut()} className="form-row form-row-divider w-full text-left" aria-label="Sign out">
