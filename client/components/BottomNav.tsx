@@ -1,18 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import {
-  Home,
-  FileText,
-  Plus,
-  Calendar,
-  Settings,
-} from "lucide-react";
+import { Home, BriefcaseBusiness, CalendarDays, LineChart, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: Home },
-  { path: "/applications", label: "Applications", icon: FileText },
-  { path: "/add", label: "Add", icon: Plus },
-  { path: "/interviews", label: "Interviews", icon: Calendar },
+  { path: "/applications", label: "Applications", icon: BriefcaseBusiness },
+  { path: "/interviews", label: "Interviews", icon: CalendarDays },
+  { path: "/insights", label: "Insights", icon: LineChart },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -20,21 +14,22 @@ export default function BottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-divider">
-      <div className="flex items-center justify-around h-[70px]">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-[#e8ecf2] bg-white/95 backdrop-blur-md" aria-label="Primary">
+      <div className="mx-auto flex h-[calc(84px+env(safe-area-inset-bottom))] w-full max-w-[520px] items-start justify-around px-2 pt-2">
         {navItems.map(({ path, label, icon: Icon }) => {
           const isActive = location.pathname === path;
           return (
             <Link
               key={path}
               to={path}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex flex-col items-center justify-center w-full h-full transition-transform active:scale-95",
-                isActive ? "text-primary" : "text-[#9CA3AF]"
+                "flex w-[72px] flex-col items-center gap-1 rounded-2xl py-2 transition",
+                isActive ? "text-primary" : "text-[#8c97a8]"
               )}
             >
-              <Icon size={24} className="mb-1" />
-              <span className="text-xs font-medium">{label}</span>
+              <Icon size={20} strokeWidth={isActive ? 2.4 : 2} />
+              <span className="text-[11px] font-medium">{label}</span>
             </Link>
           );
         })}
