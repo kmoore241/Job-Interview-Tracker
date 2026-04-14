@@ -375,15 +375,15 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
     const key = formatLocalYMD(date);
 
     return applications
-      .filter((a) => a.interviewDate === key)
-      .map((a) => ({
-        id: a.id,
-        company: a.company,
-        role: a.role,
-        date: a.interviewDate || "",
-        time: a.interviewTime ?? "TBD",
-        location: a.location ?? "TBD",
-        applicationId: a.id,
+      .filter((application) => application.interviewDate === key)
+      .map((application) => ({
+        id: application.id,
+        company: application.company,
+        role: application.role,
+        date: application.interviewDate || "",
+        time: application.interviewTime ?? "TBD",
+        location: application.location ?? "TBD",
+        applicationId: application.id,
       }));
   };
 
@@ -432,7 +432,7 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
           location: a.location ?? "TBD",
         };
       })
-      .filter((i) => i.date >= now)
+      .filter((interview) => interview.date >= now)
       .sort((a, b) => a.date - b.date);
   };
 
