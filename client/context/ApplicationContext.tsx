@@ -1,20 +1,29 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import { formatLocalYMD } from "../lib/dates";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { formatLocalYMD, parseLocalDate } from "@/lib/dates";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 export interface Application {
   id: string;
   company: string;
   role: string;
   status: "Applied" | "Interview" | "Rejected" | "Offer";
-  dateApplied: string; // ISO date string
-  interviewDate?: string; // YYYY-MM-DD format (local date, no timezone)
+  dateApplied: string;
+  interviewDate?: string;
   interviewTime?: string;
   location?: string;
   notes: string;
   initials: string;
   reminders?: {
     enabled: boolean;
-    times: ("24h" | "1h" | "10m")[]; // Which reminders to send
+    times: ("24h" | "1h" | "10m")[];
   };
   preparation?: {
     interviewerName?: string;
@@ -34,16 +43,19 @@ export interface Interview {
   role: string;
   time: string;
   location: string;
-  date: string; // ISO date string
+  date: string;
   applicationId: string;
 }
 
 interface ApplicationContextType {
   applications: Application[];
   interviews: Interview[];
-  addApplication: (app: Omit<Application, "id">) => void;
-  updateApplication: (id: string, app: Partial<Application>) => void;
-  deleteApplication: (id: string) => void;
+  isHydrating: boolean;
+  persistenceError: string | null;
+  addApplication: (app: Omit<Application, "id">) => Promise<void>;
+  updateApplication: (id: string, app: Partial<Application>) => Promise<void>;
+  deleteApplication: (id: string) => Promise<void>;
+  clearAllApplications: () => Promise<void>;
   getApplicationById: (id: string) => Application | undefined;
   getInterviewsByDate: (date: Date) => Interview[];
   getApplicationStats: () => {
@@ -64,195 +76,218 @@ interface ApplicationContextType {
   }>;
 }
 
-const ApplicationContext = createContext<ApplicationContextType | undefined>(
-  undefined
-);
+const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined);
 
-// Helper to create mock data with proper date strings
-function createMockApplications(): Application[] {
-  const today = new Date();
-  const in3Days = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
-  const in5Days = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
-  const in7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  return [
-    {
-      id: "1",
-      company: "Acme Corp",
-      role: "Senior Product Manager",
-      status: "Interview",
-      dateApplied: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      interviewDate: formatLocalYMD(in3Days),
-      interviewTime: "10:00 AM",
-      location: "San Francisco, CA",
-      notes: "Great company, interested in remote options",
-      initials: "AC",
-    },
-    {
-      id: "2",
-      company: "Tech Startup Inc",
-      role: "Full Stack Engineer",
-      status: "Interview",
-      dateApplied: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-      interviewDate: formatLocalYMD(in5Days),
-      interviewTime: "2:00 PM",
-      location: "Zoom",
-      notes: "Series B funded, fast-growing",
-      initials: "TS",
-    },
-    {
-      id: "3",
-      company: "Design Co",
-      role: "UI/UX Designer",
-      status: "Rejected",
-      dateApplied: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-      notes: "Rejected after first round",
-      initials: "DC",
-    },
-    {
-      id: "4",
-      company: "Finance Solutions",
-      role: "Data Analyst",
-      status: "Offer",
-      dateApplied: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
-      notes: "Pending decision, $120k offer",
-      initials: "FS",
-    },
-    {
-      id: "5",
-      company: "CloudBase Systems",
-      role: "DevOps Engineer",
-      status: "Interview",
-      dateApplied: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-      interviewDate: formatLocalYMD(in7Days),
-      interviewTime: "11:30 AM",
-      location: "New York, NY",
-      notes: "Cloud infrastructure focus",
-      initials: "CB",
-    },
-    {
-      id: "6",
-      company: "AI Innovations",
-      role: "ML Engineer",
-      status: "Applied",
-      dateApplied: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      notes: "Looking for ML engineers",
-      initials: "AI",
-    },
-    {
-      id: "7",
-      company: "WebFlow Agency",
-      role: "Frontend Developer",
-      status: "Applied",
-      dateApplied: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      notes: "Remote-friendly, no meetings culture",
-      initials: "WA",
-    },
-    {
-      id: "8",
-      company: "DataStream Corp",
-      role: "Backend Engineer",
-      status: "Applied",
-      dateApplied: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      notes: "Interesting tech stack",
-      initials: "DC",
-    },
-  ];
+function mapDbRowToApplication(row: any): Application {
+  return {
+    id: row.id,
+    company: row.company,
+    role: row.role,
+    status: row.status,
+    dateApplied: row.date_applied,
+    interviewDate: row.interview_date ?? undefined,
+    interviewTime: row.interview_time ?? undefined,
+    location: row.location ?? undefined,
+    notes: row.notes ?? "",
+    initials: row.initials ?? "",
+    reminders: row.reminders ?? undefined,
+    preparation: row.preparation ?? undefined,
+  };
 }
 
-// Mock data with realistic ISO dates
-const mockApplicationsData = createMockApplications();
+function mapApplicationToDbPayload(
+  app: Omit<Application, "id"> | Partial<Application>
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
 
-const mockInterviewsData: Interview[] = [
-  {
-    id: "int-1",
-    company: "Acme Corp",
-    role: "Senior Product Manager",
-    time: "10:00 AM",
-    location: "San Francisco, CA",
-    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000).toISOString(),
-    applicationId: "1",
-  },
-  {
-    id: "int-2",
-    company: "Tech Startup Inc",
-    role: "Full Stack Engineer",
-    time: "2:00 PM",
-    location: "Zoom",
-    date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    applicationId: "2",
-  },
-  {
-    id: "int-3",
-    company: "CloudBase Systems",
-    role: "DevOps Engineer",
-    time: "11:30 AM",
-    location: "New York, NY",
-    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    applicationId: "5",
-  },
-];
+  if (app.company !== undefined) payload.company = app.company;
+  if (app.role !== undefined) payload.role = app.role;
+  if (app.status !== undefined) payload.status = app.status;
+  if (app.dateApplied !== undefined) payload.date_applied = app.dateApplied;
+  if (app.interviewDate !== undefined) payload.interview_date = app.interviewDate ?? null;
+  if (app.interviewTime !== undefined) payload.interview_time = app.interviewTime ?? null;
+  if (app.location !== undefined) payload.location = app.location ?? null;
+  if (app.notes !== undefined) payload.notes = app.notes;
+  if (app.initials !== undefined) payload.initials = app.initials;
+  if (app.reminders !== undefined) payload.reminders = app.reminders ?? null;
+  if (app.preparation !== undefined) payload.preparation = app.preparation ?? null;
+
+  return payload;
+}
 
 export function ApplicationProvider({ children }: { children: ReactNode }) {
-  const [applications, setApplications] = useState<Application[]>(mockApplicationsData);
-  const [interviews, setInterviews] = useState<Interview[]>(mockInterviewsData);
+  const { user } = useAuth();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
 
-  const addApplication = (app: Omit<Application, "id">) => {
-    const newApp: Application = {
-      ...app,
-      id: Date.now().toString(),
+  useEffect(() => {
+    const load = async () => {
+      if (!user) {
+        setApplications([]);
+        setInterviews([]);
+        setPersistenceError(null);
+        setIsHydrating(false);
+        return;
+      }
+
+      setIsHydrating(true);
+      const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .order("date_applied", { ascending: false })
+        .execute();
+
+      if (error) {
+        setPersistenceError(error.message);
+        setApplications([]);
+      } else {
+        setPersistenceError(null);
+        setApplications((data ?? []).map(mapDbRowToApplication));
+      }
+
+      setIsHydrating(false);
     };
-    setApplications([...applications, newApp]);
+
+    load();
+  }, [user]);
+
+  useEffect(() => {
+    const nextInterviews: Interview[] = applications
+      .filter((app) => app.interviewDate)
+      .map((app) => ({
+        id: app.id,
+        company: app.company,
+        role: app.role,
+        time: app.interviewTime ?? "TBD",
+        location: app.location ?? "TBD",
+        date: app.interviewDate ?? "",
+        applicationId: app.id,
+      }));
+
+    setInterviews(nextInterviews);
+  }, [applications]);
+
+  const addApplication = async (app: Omit<Application, "id">) => {
+    if (!user) return;
+
+    const payload = {
+      ...mapApplicationToDbPayload(app),
+      user_id: user.id,
+    };
+
+    const { data, error } = await supabase
+      .from("applications")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) => [mapDbRowToApplication(data), ...prev]);
   };
 
-  const updateApplication = (id: string, app: Partial<Application>) => {
-    setApplications(
-      applications.map((a) => (a.id === id ? { ...a, ...app } : a))
+  const updateApplication = async (id: string, app: Partial<Application>) => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("applications")
+      .update(mapApplicationToDbPayload(app))
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) =>
+      prev.map((existing) =>
+        existing.id === id ? mapDbRowToApplication(data) : existing
+      )
     );
   };
 
-  const deleteApplication = (id: string) => {
-    setApplications(applications.filter((a) => a.id !== id));
-    setInterviews(interviews.filter((i) => i.applicationId !== id));
+  const deleteApplication = async (id: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("applications")
+      .delete()
+      .eq("id", id)
+      .execute();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) => prev.filter((existing) => existing.id !== id));
   };
 
-  const getApplicationById = (id: string) => {
-    return applications.find((a) => a.id === id);
+  const clearAllApplications = async () => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("applications")
+      .delete()
+      .eq("user_id", user.id)
+      .execute();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications([]);
   };
+
+  const getApplicationById = (id: string) =>
+    applications.find((application) => application.id === id);
 
   const getInterviewsByDate = (date: Date) => {
     const key = formatLocalYMD(date);
 
     return applications
-      .filter((a) => a.interviewDate === key)
-      .map((a) => ({
-        id: a.id,
-        company: a.company,
-        role: a.role,
-        date: a.interviewDate || "",
-        time: a.interviewTime ?? "TBD",
-        location: a.location ?? "TBD",
-        applicationId: a.id,
+      .filter((application) => application.interviewDate === key)
+      .map((application) => ({
+        id: application.id,
+        company: application.company,
+        role: application.role,
+        date: application.interviewDate || "",
+        time: application.interviewTime ?? "TBD",
+        location: application.location ?? "TBD",
+        applicationId: application.id,
       }));
   };
 
-  const getApplicationStats = () => {
-    return {
-      applied: applications.filter((a) => a.status === "Applied").length,
-      interviewing: applications.filter((a) => a.status === "Interview").length,
-      rejected: applications.filter((a) => a.status === "Rejected").length,
-      offers: applications.filter((a) => a.status === "Offer").length,
-    };
-  };
+  const getApplicationStats = () => ({
+    applied: applications.filter((a) => a.status === "Applied").length,
+    interviewing: applications.filter((a) => a.status === "Interview").length,
+    rejected: applications.filter((a) => a.status === "Rejected").length,
+    offers: applications.filter((a) => a.status === "Offer").length,
+  });
 
   const getNextInterview = () => {
     const upcoming = applications
       .filter((a) => a.interviewDate)
       .map((a) => ({
         ...a,
-        interviewDateObj: new Date(a.interviewDate!),
+        interviewDateObj: parseLocalDate(a.interviewDate!),
       }))
-      .filter((a) => a.interviewDateObj >= new Date(new Date().toISOString().split("T")[0]))
+      .filter(
+        (a) =>
+          a.interviewDateObj >= parseLocalDate(formatLocalYMD(new Date()))
+      )
       .sort((a, b) => a.interviewDateObj.getTime() - b.interviewDateObj.getTime());
 
     const next = upcoming[0];
@@ -270,13 +305,13 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
   };
 
   const getUpcomingInterviews = () => {
-    const today = new Date(new Date().toISOString().split("T")[0]);
+    const today = parseLocalDate(formatLocalYMD(new Date()));
     const now = today.getTime();
 
     return applications
       .filter((a) => a.interviewDate)
       .map((a) => {
-        const dateObj = new Date(a.interviewDate!);
+        const dateObj = parseLocalDate(a.interviewDate!);
         return {
           id: a.id,
           company: a.company,
@@ -286,32 +321,32 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
           location: a.location ?? "TBD",
         };
       })
-      .filter((i) => i.date >= now)
+      .filter((interview) => interview.date >= now)
       .sort((a, b) => a.date - b.date);
   };
 
-  const getAllInterviews = () => {
-    return interviews;
-  };
+  const value = useMemo(
+    () => ({
+      applications,
+      interviews,
+      isHydrating,
+      persistenceError,
+      addApplication,
+      updateApplication,
+      deleteApplication,
+      clearAllApplications,
+      getApplicationById,
+      getInterviewsByDate,
+      getApplicationStats,
+      getNextInterview,
+      getAllInterviews: () => interviews,
+      getUpcomingInterviews,
+    }),
+    [applications, interviews, isHydrating, persistenceError]
+  );
 
   return (
-    <ApplicationContext.Provider
-      value={{
-        applications,
-        interviews,
-        addApplication,
-        updateApplication,
-        deleteApplication,
-        getApplicationById,
-        getInterviewsByDate,
-        getApplicationStats,
-        getNextInterview,
-        getAllInterviews,
-        getUpcomingInterviews,
-      }}
-    >
-      {children}
-    </ApplicationContext.Provider>
+    <ApplicationContext.Provider value={value}>{children}</ApplicationContext.Provider>
   );
 }
 
