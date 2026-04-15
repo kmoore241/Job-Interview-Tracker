@@ -247,6 +247,7 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [isHydrating, setIsHydrating] = useState(true);
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
+}
 
   useEffect(() => {
     const loadApplications = async () => {
