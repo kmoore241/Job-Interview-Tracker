@@ -311,6 +311,7 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
     setPersistenceError(null);
     setApplications((prev) => [mapDbRowToApplication(data), ...prev]);
   };
+}
 
   const updateApplication = async (id: string, app: Partial<Application>) => {
     if (!user) return;
@@ -368,12 +369,55 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
     setPersistenceError(null);
     setApplications([]);
   };
+}
+
+export function ApplicationProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const hydrate = async () => {
+      if (!user) {
+        if (!active) return;
+        setApplications([]);
+        setPersistenceError(null);
+        setIsHydrating(false);
+        return;
+      }
+
+      setIsHydrating(true);
+      const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .order("date_applied", { ascending: false })
+        .execute();
+
+      if (!active) return;
+
+      if (error) {
+        setApplications([]);
+        setPersistenceError(error.message);
+      } else {
+        const rows = (data ?? []) as ApplicationRow[];
+        setApplications(rows.map(mapDbRowToApplication));
+        setPersistenceError(null);
+      }
 
   const getApplicationById = (id: string) => applications.find((a) => a.id === id);
 
   const getInterviewsByDate = (date: Date) => {
     const key = formatLocalYMD(date);
 
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const interviews = useMemo(() => {
     return applications
       .filter((application) => application.interviewDate === key)
       .map((application) => ({
@@ -401,19 +445,10 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
       .filter((a) => a.interviewDateObj >= parseLocalDate(formatLocalYMD(new Date())))
       .sort((a, b) => a.interviewDateObj.getTime() - b.interviewDateObj.getTime());
 
-    const next = upcoming[0];
-    if (!next) return null;
+    return next?.interview ?? null;
+  }, [interviews]);
 
-    return {
-      id: next.id,
-      company: next.company,
-      role: next.role,
-      date: next.interviewDate || "",
-      time: next.interviewTime ?? "TBD",
-      location: next.location ?? "TBD",
-      applicationId: next.id,
-    };
-  };
+  const getAllInterviews = useCallback(() => interviews, [interviews]);
 
   const getUpcomingInterviews = () => {
     const today = parseLocalDate(formatLocalYMD(new Date()));
