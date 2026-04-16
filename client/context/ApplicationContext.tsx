@@ -4,11 +4,11 @@ import React, {
   useEffect,
   useMemo,
   useState,
-  ReactNode,
+  type ReactNode,
 } from "react";
-import { formatLocalYMD, parseLocalDate } from "../lib/dates";
+import { formatLocalYMD, parseLocalDate } from "@/lib/dates";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 export interface Application {
   id: string;
@@ -76,9 +76,24 @@ interface ApplicationContextType {
   }>;
 }
 
+interface ApplicationRow {
+  id: string;
+  company: string;
+  role: string;
+  status: Application["status"];
+  date_applied: string;
+  interview_date: string | null;
+  interview_time: string | null;
+  location: string | null;
+  notes: string | null;
+  initials: string | null;
+  reminders: Application["reminders"] | null;
+  preparation: Application["preparation"] | null;
+}
+
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined);
 
-function mapDbRowToApplication(row: any): Application {
+function mapDbRowToApplication(row: ApplicationRow): Application {
   return {
     id: row.id,
     company: row.company,
@@ -95,7 +110,9 @@ function mapDbRowToApplication(row: any): Application {
   };
 }
 
-function mapApplicationToDbPayload(app: Omit<Application, "id"> | Partial<Application>) {
+function mapApplicationToDbPayload(
+  app: Omit<Application, "id"> | Partial<Application>,
+): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
 
   if (app.company !== undefined) payload.company = app.company;
@@ -111,6 +128,20 @@ function mapApplicationToDbPayload(app: Omit<Application, "id"> | Partial<Applic
   if (app.preparation !== undefined) payload.preparation = app.preparation ?? null;
 
   return payload;
+}
+
+function deriveInterview(application: Application): Interview | null {
+  if (!application.interviewDate) return null;
+
+  return {
+    id: application.id,
+    company: application.company,
+    role: application.role,
+    time: application.interviewTime ?? "TBD",
+    location: application.location ?? "TBD",
+    date: application.interviewDate,
+    applicationId: application.id,
+  };
 }
 
 export function ApplicationProvider({ children }: { children: ReactNode }) {
@@ -462,28 +493,23 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
 
   const getAllInterviews = useCallback(() => interviews, [interviews]);
 
-  const getUpcomingInterviews = () => {
-    const today = parseLocalDate(formatLocalYMD(new Date()));
-    const now = today.getTime();
+  const getUpcomingInterviews = useCallback(() => {
+    const startOfToday = parseLocalDate(formatLocalYMD(new Date())).getTime();
 
-    return applications
-      .filter((a) => a.interviewDate)
-      .map((a) => {
-        const dateObj = parseLocalDate(a.interviewDate!);
-        return {
-          id: a.id,
-          company: a.company,
-          role: a.role,
-          date: dateObj.getTime(),
-          time: a.interviewTime,
-          location: a.location ?? "TBD",
-        };
-      })
-      .filter((interview) => interview.date >= now)
+    return interviews
+      .map((interview) => ({
+        id: interview.id,
+        company: interview.company,
+        role: interview.role,
+        date: parseLocalDate(interview.date).getTime(),
+        time: interview.time,
+        location: interview.location,
+      }))
+      .filter((interview) => interview.date >= startOfToday)
       .sort((a, b) => a.date - b.date);
-  };
+  }, [interviews]);
 
-  const value = useMemo(
+  const value = useMemo<ApplicationContextType>(
     () => ({
       applications,
       interviews,
@@ -497,14 +523,25 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
       getInterviewsByDate,
       getApplicationStats,
       getNextInterview,
-      getAllInterviews: () => interviews,
+      getAllInterviews,
       getUpcomingInterviews,
     }),
-    [applications, interviews, isHydrating, persistenceError]
-  );
-
-  return (
-    <ApplicationContext.Provider value={value}>{children}</ApplicationContext.Provider>
+    [
+      applications,
+      interviews,
+      isHydrating,
+      persistenceError,
+      addApplication,
+      updateApplication,
+      deleteApplication,
+      clearAllApplications,
+      getApplicationById,
+      getInterviewsByDate,
+      getApplicationStats,
+      getNextInterview,
+      getAllInterviews,
+      getUpcomingInterviews,
+    ],
   );
 
   return <ApplicationContext.Provider value={value}>{children}</ApplicationContext.Provider>;
