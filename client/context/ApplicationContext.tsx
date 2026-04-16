@@ -1,6 +1,5 @@
-import {
+import React, {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -53,10 +52,10 @@ interface ApplicationContextType {
   interviews: Interview[];
   isHydrating: boolean;
   persistenceError: string | null;
-  addApplication: (app: Omit<Application, "id">) => Promise<void>;
-  updateApplication: (id: string, app: Partial<Application>) => Promise<void>;
-  deleteApplication: (id: string) => Promise<void>;
-  clearAllApplications: () => Promise<void>;
+  addApplication: (app: Omit<Application, "id">) => void;
+  updateApplication: (id: string, app: Partial<Application>) => void;
+  deleteApplication: (id: string) => void;
+  clearAllApplications: () => void;
   getApplicationById: (id: string) => Application | undefined;
   getInterviewsByDate: (date: Date) => Interview[];
   getApplicationStats: () => {
@@ -148,128 +147,255 @@ function deriveInterview(application: Application): Interview | null {
 export function ApplicationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
-  const [isHydrating, setIsHydrating] = useState<boolean>(true);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isHydrating, setIsHydrating] = useState(true);
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-
     const loadApplications = async () => {
       if (!user) {
-        if (!mounted) return;
         setApplications([]);
-        setPersistenceError(null);
         setIsHydrating(false);
         return;
       }
 
       setIsHydrating(true);
-
       const { data, error } = await supabase
         .from("applications")
         .select("*")
         .order("date_applied", { ascending: false })
         .execute();
 
-      if (!mounted) return;
-
       if (error) {
-        setApplications([]);
         setPersistenceError(error.message);
+        setApplications([]);
       } else {
-        const rows = (data ?? []) as ApplicationRow[];
-        setApplications(rows.map(mapDbRowToApplication));
         setPersistenceError(null);
+        setApplications((data ?? []).map(mapDbRowToApplication));
       }
 
       setIsHydrating(false);
     };
 
     loadApplications();
-
-    return () => {
-      mounted = false;
-    };
   }, [user]);
 
-  const interviews = useMemo(
-    () => applications.map(deriveInterview).filter((interview): interview is Interview => interview !== null),
-    [applications],
+  useEffect(() => {
+    const mapped = applications
+      .filter((app) => app.interviewDate)
+      .map((app) => ({
+        id: app.id,
+        company: app.company,
+        role: app.role,
+        time: app.interviewTime ?? "TBD",
+        location: app.location ?? "TBD",
+        date: app.interviewDate ?? "",
+        applicationId: app.id,
+      }));
+
+    setInterviews(mapped);
+  }, [applications]);
+
+  const addApplication = async (app: Omit<Application, "id">) => {
+    if (!user) return;
+
+    const payload = { ...mapApplicationToDbPayload(app), user_id: user.id };
+    const { data, error } = await supabase.from("applications").insert(payload).select("*").single();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) => [mapDbRowToApplication(data), ...prev]);
+  };
+
+  const updateApplication = async (id: string, app: Partial<Application>) => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("applications")
+      .update(mapApplicationToDbPayload(app))
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) => prev.map((a) => (a.id === id ? mapDbRowToApplication(data) : a)));
+  };
+
+  const deleteApplication = async (id: string) => {
+    if (!user) return;
+
+    const { error } = await supabase.from("applications").delete().eq("id", id).execute();
+
+function mapDbRowToApplication(row: any): Application {
+  return {
+    id: row.id,
+    company: row.company,
+    role: row.role,
+    status: row.status,
+    dateApplied: row.date_applied,
+    interviewDate: row.interview_date ?? undefined,
+    interviewTime: row.interview_time ?? undefined,
+    location: row.location ?? undefined,
+    notes: row.notes ?? "",
+    initials: row.initials ?? "",
+    reminders: row.reminders ?? undefined,
+    preparation: row.preparation ?? undefined,
+  };
+}
+
+function mapApplicationToDbPayload(
+  app: Omit<Application, "id"> | Partial<Application>
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+
+  if (app.company !== undefined) payload.company = app.company;
+  if (app.role !== undefined) payload.role = app.role;
+  if (app.status !== undefined) payload.status = app.status;
+  if (app.dateApplied !== undefined) payload.date_applied = app.dateApplied;
+  if (app.interviewDate !== undefined) payload.interview_date = app.interviewDate ?? null;
+  if (app.interviewTime !== undefined) payload.interview_time = app.interviewTime ?? null;
+  if (app.location !== undefined) payload.location = app.location ?? null;
+  if (app.notes !== undefined) payload.notes = app.notes;
+  if (app.initials !== undefined) payload.initials = app.initials;
+  if (app.reminders !== undefined) payload.reminders = app.reminders ?? null;
+  if (app.preparation !== undefined) payload.preparation = app.preparation ?? null;
+
+  return payload;
+}
+
+import React, { createContext, useState, ReactNode } from "react";
+// ...other imports and types...
+
+export const ApplicationContext = createContext(/* ... */);
+
+export function ApplicationProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [intreviews, setInterviews] = useState<Intterview[]>([]);
+  const [setIsHydrating, setIsHydrating] = useState(true);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
+  return (
+    <ApplicationContext.Provider value={{ applications, setApplications }}>
+      {children}
+    </ApplicationContext.Provider>
   );
+}
 
-  const addApplication = useCallback(
-    async (app: Omit<Application, "id">) => {
-      if (!user) return;
+  useEffect(() => {
+    const loadApplications = async () => {
+      if (!user) {
+        setApplications([]);
+        setIsHydrating(false);
+        return;
+      }
 
+      setIsHydrating(true);
       const { data, error } = await supabase
         .from("applications")
-        .insert({ ...mapApplicationToDbPayload(app), user_id: user.id })
         .select("*")
-        .single();
+        .order("date_applied", { ascending: false })
+        .execute();
 
       if (error) {
         setPersistenceError(error.message);
-        return;
+        setApplications([]);
+      } else {
+        setPersistenceError(null);
+        setApplications((data ?? []).map(mapDbRowToApplication));
       }
 
-      if (!data) {
-        setPersistenceError("No application was returned after create.");
-        return;
-      }
+      setIsHydrating(false);
+    };
 
-      setPersistenceError(null);
-      setApplications((current) => [mapDbRowToApplication(data as ApplicationRow), ...current]);
-    },
-    [user],
-  );
+    loadApplications();
+  }, [user]);
 
-  const updateApplication = useCallback(
-    async (id: string, app: Partial<Application>) => {
-      if (!user) return;
+  useEffect(() => {
+    const mapped = applications
+      .filter((app) => app.interviewDate)
+      .map((app) => ({
+        id: app.id,
+        company: app.company,
+        role: app.role,
+        time: app.interviewTime ?? "TBD",
+        location: app.location ?? "TBD",
+        date: app.interviewDate ?? "",
+        applicationId: app.id,
+      }));
 
-      const { data, error } = await supabase
-        .from("applications")
-        .update(mapApplicationToDbPayload(app))
-        .eq("id", id)
-        .select("*")
-        .single();
+    setInterviews(mapped);
+  }, [applications]);
 
-      if (error) {
-        setPersistenceError(error.message);
-        return;
-      }
+  const addApplication = async (app: Omit<Application, "id">) => {
+    if (!user) return;
 
-      if (!data) {
-        setPersistenceError("No application was returned after update.");
-        return;
-      }
+    const payload = { ...mapApplicationToDbPayload(app), user_id: user.id };
+    const { data, error } = await supabase
+      .from("applications")
+      .insert(payload)
+      .select("*")
+      .single();
 
-      setPersistenceError(null);
-      setApplications((current) =>
-        current.map((item) => (item.id === id ? mapDbRowToApplication(data as ApplicationRow) : item)),
-      );
-    },
-    [user],
-  );
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
 
-  const deleteApplication = useCallback(
-    async (id: string) => {
-      if (!user) return;
+    setPersistenceError(null);
+    setApplications((prev) => [mapDbRowToApplication(data), ...prev]);
+  };
+}
 
-      const { error } = await supabase.from("applications").delete().eq("id", id).execute();
+  const updateApplication = async (id: string, app: Partial<Application>) => {
+    if (!user) return;
 
-      if (error) {
-        setPersistenceError(error.message);
-        return;
-      }
+    const { data, error } = await supabase
+      .from("applications")
+      .update(mapApplicationToDbPayload(app))
+      .eq("id", id)
+      .select("*")
+      .single();
 
-      setPersistenceError(null);
-      setApplications((current) => current.filter((item) => item.id !== id));
-    },
-    [user],
-  );
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
 
-  const clearAllApplications = useCallback(async () => {
+    setPersistenceError(null);
+    setApplications((prev) =>
+      prev.map((a) => (a.id === id ? mapDbRowToApplication(data) : a))
+    );
+  };
+
+  const deleteApplication = async (id: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("applications")
+      .delete()
+      .eq("id", id)
+      .execute();
+
+    if (error) {
+      setPersistenceError(error.message);
+      return;
+    }
+
+    setPersistenceError(null);
+    setApplications((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const clearAllApplications = async () => {
     if (!user) return;
 
     const { error } = await supabase
@@ -285,40 +411,82 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
 
     setPersistenceError(null);
     setApplications([]);
+  };
+}
+
+export function ApplicationProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const hydrate = async () => {
+      if (!user) {
+        if (!active) return;
+        setApplications([]);
+        setPersistenceError(null);
+        setIsHydrating(false);
+        return;
+      }
+
+      setIsHydrating(true);
+      const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .order("date_applied", { ascending: false })
+        .execute();
+
+      if (!active) return;
+
+      if (error) {
+        setApplications([]);
+        setPersistenceError(error.message);
+      } else {
+        const rows = (data ?? []) as ApplicationRow[];
+        setApplications(rows.map(mapDbRowToApplication));
+        setPersistenceError(null);
+      }
+
+  const getApplicationById = (id: string) => applications.find((a) => a.id === id);
+
+  const getInterviewsByDate = (date: Date) => {
+    const key = formatLocalYMD(date);
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
-  const getApplicationById = useCallback(
-    (id: string) => applications.find((application) => application.id === id),
-    [applications],
-  );
+  const interviews = useMemo(() => {
+    return applications
+      .filter((application) => application.interviewDate === key)
+      .map((application) => ({
+        id: application.id,
+        company: application.company,
+        role: application.role,
+        date: application.interviewDate || "",
+        time: application.interviewTime ?? "TBD",
+        location: application.location ?? "TBD",
+        applicationId: application.id,
+      }));
+  };
 
-  const getInterviewsByDate = useCallback(
-    (date: Date) => {
-      const day = formatLocalYMD(date);
-      return interviews.filter((interview) => interview.date === day);
-    },
-    [interviews],
-  );
+  const getApplicationStats = () => ({
+    applied: applications.filter((a) => a.status === "Applied").length,
+    interviewing: applications.filter((a) => a.status === "Interview").length,
+    rejected: applications.filter((a) => a.status === "Rejected").length,
+    offers: applications.filter((a) => a.status === "Offer").length,
+  });
 
-  const getApplicationStats = useCallback(() => {
-    return {
-      applied: applications.filter((application) => application.status === "Applied").length,
-      interviewing: applications.filter((application) => application.status === "Interview").length,
-      rejected: applications.filter((application) => application.status === "Rejected").length,
-      offers: applications.filter((application) => application.status === "Offer").length,
-    };
-  }, [applications]);
-
-  const getNextInterview = useCallback((): Interview | null => {
-    const startOfToday = parseLocalDate(formatLocalYMD(new Date())).getTime();
-
-    const next = interviews
-      .map((interview) => ({
-        interview,
-        timestamp: parseLocalDate(interview.date).getTime(),
-      }))
-      .filter((item) => item.timestamp >= startOfToday)
-      .sort((a, b) => a.timestamp - b.timestamp)[0];
+  const getNextInterview = () => {
+    const upcoming = applications
+      .filter((a) => a.interviewDate)
+      .map((a) => ({ ...a, interviewDateObj: parseLocalDate(a.interviewDate!) }))
+      .filter((a) => a.interviewDateObj >= parseLocalDate(formatLocalYMD(new Date())))
+      .sort((a, b) => a.interviewDateObj.getTime() - b.interviewDateObj.getTime());
 
     return next?.interview ?? null;
   }, [interviews]);
@@ -381,10 +549,6 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
 
 export function useApplications() {
   const context = useContext(ApplicationContext);
-
-  if (!context) {
-    throw new Error("useApplications must be used within ApplicationProvider");
-  }
-
+  if (!context) throw new Error("useApplications must be used within ApplicationProvider");
   return context;
 }
