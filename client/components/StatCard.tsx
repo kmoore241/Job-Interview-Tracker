@@ -1,9 +1,9 @@
-import { FC, SVGProps } from "react";
+import { LucideIcon } from "lucide-react";
 
 interface StatCardProps {
   label: string;
   count: number;
-  icon: FC<SVGProps<SVGSVGElement>>;
+  icon: LucideIcon;
   color: string;
 }
 
