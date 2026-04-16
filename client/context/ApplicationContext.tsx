@@ -241,13 +241,23 @@ function mapApplicationToDbPayload(
   return payload;
 }
 
+import React, { createContext, useState, ReactNode } from "react";
+// ...other imports and types...
+
+export const ApplicationContext = createContext(/* ... */);
+
 export function ApplicationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
-  const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [isHydrating, setIsHydrating] = useState(true);
+  const [intreviews, setInterviews] = useState<Intterview[]>([]);
+  const [setIsHydrating, setIsHydrating] = useState(true);
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
-  return <ApplicationContext.Provider value={value}>{children}</ApplicationContext.Provider>;
+
+  return (
+    <ApplicationContext.Provider value={{ applications, setApplications }}>
+      {children}
+    </ApplicationContext.Provider>
+  );
 }
 
   useEffect(() => {
